@@ -1,0 +1,14 @@
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:878:22:LL_AHB2_GRP1_EnableClock	48	static,ignoring_inline_asm
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:1355:22:HAL_RCC_GPIOA_EnableClock	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:1371:22:HAL_RCC_GPIOC_EnableClock	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:28:27:uart_up	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:35:5:bsp_init	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:70:5:bsp_cam_tx	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:76:5:bsp_cam_rx	24	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:82:6:bsp_cam_flush	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:89:6:bsp_vcp_write	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:94:6:bsp_vcp_print	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:99:5:bsp_button	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:104:6:bsp_led	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:109:10:bsp_delay_ms	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/bsp_c5.c:110:10:bsp_millis	8	static

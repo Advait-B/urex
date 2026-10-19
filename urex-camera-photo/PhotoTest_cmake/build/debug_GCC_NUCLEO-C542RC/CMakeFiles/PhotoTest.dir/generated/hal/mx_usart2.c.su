@@ -1,0 +1,12 @@
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:878:22:LL_AHB2_GRP1_EnableClock	48	static,ignoring_inline_asm
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:1586:22:LL_APB1_GRP1_EnableClock	48	static,ignoring_inline_asm
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:1745:22:LL_APB1_GRP1_DisableClock	40	static,ignoring_inline_asm
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:1814:22:LL_APB1_GRP1_ForceReset	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/ll/stm32c5xx_ll_bus.h:1883:22:LL_APB1_GRP1_ReleaseReset	16	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:1355:22:HAL_RCC_GPIOA_EnableClock	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:1796:22:HAL_RCC_USART2_EnableClock	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:1994:22:HAL_RCC_USART2_DisableClock	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/stm32c5xx_drivers/hal/stm32c5xx_hal_rcc.h:3463:22:HAL_RCC_USART2_Reset	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_usart2.c:35:20:mx_usart2_uart_init	40	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_usart2.c:89:6:mx_usart2_uart_deinit	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_usart2.c:100:20:mx_usart2_uart_gethandle	4	static

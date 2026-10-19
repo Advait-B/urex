@@ -1,0 +1,4 @@
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_system.c:32:17:mx_system_init	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_system.c:128:6:SysTick_Handler	8	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_system.c:138:24:pre_system_init_hook	4	static
+C:/Users/amiri/Downloads/urex-camera-photo/PhotoTest_cmake/generated/hal/mx_system.c:150:24:post_system_init_hook	4	static
