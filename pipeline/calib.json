@@ -1,0 +1,12 @@
+{
+  "_comment": "Starting values from the 13 Sep optics sheet (theta 35 deg, f 2.8 mm, L 90 mm, 5.6 um pitch). Replace with calibrate.py output once the shim test is done.",
+  "mm_per_px_depth": 0.249,
+  "mm_per_px_lateral": 0.35,
+  "depth_sign": 1,
+  "rotate180": true,
+  "min_contrast": 40,
+  "line_sigma_px": 1.5,
+  "groove_min_depth_mm": 1.0,
+  "groove_min_width_mm": 4.0,
+  "legal_min_depth_mm": 1.6
+}
