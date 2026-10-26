@@ -6,7 +6,8 @@
   "rotate180": true,
   "min_contrast": 40,
   "line_sigma_px": 1.5,
-  "groove_min_depth_mm": 1.0,
+  "groove_min_depth_mm": 0.5,
+  "expected_grooves": null,
   "groove_min_width_mm": 4.0,
   "legal_min_depth_mm": 1.6
 }

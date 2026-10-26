@@ -5,13 +5,25 @@ Geometry (matches the CMOS optics sheet):
   * The camera looks straight at the tread. The laser line runs LEFT-RIGHT
     across the image (across the tread width). Image columns = position across
     the tread, image rows = height of the line.
-  * The laser comes in at an angle, so where the rubber is LOWER (a groove)
-    the line appears SHIFTED by  shift_px = depth_mm / mm_per_px_depth.
+  * The laser sheet comes in at angle theta to the camera axis. If the surface is
+    z mm further away than the reference plane (z = 0 = a flat plate touching
+    the device's feet), the line lands z*tan(theta) mm further along, and the
+    camera sees that shifted by
+
+        shift_px(z) = z * tan(theta) * f / ((L + z - f) * pitch)
+
+    Note the z in the bottom line: further away = smaller magnification, so
+    each extra mm of depth gives FEWER pixels. That makes the relation curved
+    (about 4.0 px/mm near z = 0, only 3.2 px/mm near z = 20 mm). Last week's
+    version of this file used a straight line. That hid a 2.5 mm error on a
+    16 mm groove. See calibrate.py for how the real device is calibrated.
   * Frame A = laser off (ambient light, rubber texture).
     Frame B = laser on  (same scene + the bright line + a bit more noise).
 
-    python synth_tyre.py out/case1 --grooves 7,2.0  3,9.5  1.2,5.0 --blur 1.0
+    python synth_tyre.py out/case1 --grooves 7,12 3,9.5 1.2,5 --standoff 2
       -> out/case1_A.png, out/case1_B.png, out/case1_truth.json
+    python synth_tyre.py out/shims --shims 0,2,4,6,8,10,12,14,16,18,20
+      -> out/shims/shim_0.0_A.png ... (a fake calibration run for calibrate.py)
 
 Each --grooves item is  depth_mm,width_mm . A 1.2 mm deep groove is below the
 1.6 mm legal limit, so that case should FAIL in laser_profile.py.
@@ -23,13 +35,33 @@ import os
 import cv2
 import numpy as np
 
+# Device optics (13 Sep optics sheet). pitch 5.6 um = OV5640 binned to 640x480.
+OPTICS = dict(theta_deg=35.0, f_mm=2.8, L_mm=90.0, pitch_mm=0.0056)
 
-def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), mm_per_px_depth=0.249,
-              mm_per_px_lateral=0.35, tilt_px=4.0, blur=1.0, line_peak=170, ambient=90,
-              noise=6.0, sigma=1.5, speckle=0.15, seed=0, baseline_row=None):
+
+def shift_px(z_mm, theta_deg=35.0, f_mm=2.8, L_mm=90.0, pitch_mm=0.0056):
+    """How far (px) the laser line moves when the surface is z_mm beyond the reference plane."""
+    z = np.asarray(z_mm, dtype=float)
+    return z * np.tan(np.radians(theta_deg)) * f_mm / ((L_mm + z - f_mm) * pitch_mm)
+
+
+def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), standoff_mm=0.0,
+              surface_tilt_mm=0.0, mm_per_px_lateral=0.35, tilt_px=2.0, bow_px=3.0, blur=1.0,
+              line_peak=170, ambient=90, noise=6.0, sigma=1.5, speckle=0.15, seed=0,
+              baseline_row=None, optics=None):
+    """standoff_mm      tread surface distance beyond the reference plane (rubber feet sinking
+                        in, tread crown curvature...). 0 = touching the feet.
+    surface_tilt_mm     device not square to the tyre: surface height changes by this much
+                        from the left edge of the frame to the right edge.
+    tilt_px, bow_px     the line on the reference plane is not perfectly straight and level
+                        in the image (laser rotated slightly vs the sensor, lens distortion).
+                        These belong to the DEVICE, so keep them the same for calibration
+                        shots and measurement shots.
+    """
+    optics = {**OPTICS, **(optics or {})}
     rng = np.random.default_rng(seed)
     if baseline_row is None:
-        baseline_row = h * 0.5
+        baseline_row = h * 0.3          # leaves room for the line to move down ~20 mm
 
     # ---- ground-truth depth per column (mm): 0 on the tread surface
     depth = np.zeros(w)
@@ -43,9 +75,11 @@ def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), mm_pe
         depth[lo:hi] = d_mm
         truth.append({"depth_mm": d_mm, "width_mm": w_mm, "col_start": lo, "col_end": hi})
 
-    # the laser line row for each column: a slightly tilted straight line on the
-    # surface (hand-held = never perfectly square) + the groove shift
-    y_line = baseline_row + tilt_px * (x - w / 2) / w + depth / mm_per_px_depth
+    # absolute distance of each column's surface beyond the reference plane
+    u = (x - w / 2) / (w / 2)                                    # -1 .. +1 across the frame
+    z = standoff_mm + surface_tilt_mm * u / 2 + depth
+    y_ref = baseline_row + tilt_px * u / 2 + bow_px * u ** 2      # line on the reference plane
+    y_line = y_ref + shift_px(z, **optics)
 
     # ---- frame A: ambient light on rubber (blotchy texture + vignetting)
     yy, xx = np.mgrid[0:h, 0:w]
@@ -70,9 +104,20 @@ def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), mm_pe
     A = np.clip(A, 0, 255).astype(np.uint8)
     B = np.clip(B, 0, 255).astype(np.uint8)
 
-    return A, B, {"y_line": y_line.tolist(), "depth_mm": depth.tolist(), "grooves": truth,
-                  "mm_per_px_depth": mm_per_px_depth, "mm_per_px_lateral": mm_per_px_lateral,
-                  "tilt_px": tilt_px, "blur": blur}
+    return A, B, {"y_line": y_line.tolist(), "z_mm": z.tolist(), "depth_mm": depth.tolist(),
+                  "grooves": truth, "standoff_mm": standoff_mm, "surface_tilt_mm": surface_tilt_mm,
+                  "mm_per_px_lateral": mm_per_px_lateral, "optics": optics, "blur": blur}
+
+
+def write_shim_series(folder, shims, rotate180=True, ext="png", **kw):
+    """Fake calibration run: flat plate (no grooves) at each shim height."""
+    os.makedirs(folder, exist_ok=True)
+    for i, s in enumerate(shims):
+        A, B, _ = make_pair(grooves=(), standoff_mm=s, seed=100 + i, **kw)
+        if rotate180:
+            A, B = cv2.rotate(A, cv2.ROTATE_180), cv2.rotate(B, cv2.ROTATE_180)
+        cv2.imwrite(os.path.join(folder, f"shim_{s:.1f}_A.{ext}"), A)
+        cv2.imwrite(os.path.join(folder, f"shim_{s:.1f}_B.{ext}"), B)
 
 
 def parse_grooves(items):
@@ -85,20 +130,30 @@ def parse_grooves(items):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("prefix", help="output prefix, e.g. out/case1")
+    ap.add_argument("prefix", help="output prefix, e.g. out/case1 (or a folder with --shims)")
     ap.add_argument("--grooves", nargs="*", default=["7,12", "6,9", "2.5,8"], help="depth_mm,width_mm ...")
+    ap.add_argument("--shims", help="comma list of plate heights in mm: write a fake calibration run instead")
+    ap.add_argument("--standoff", type=float, default=0.0, help="tread surface beyond the reference plane, mm")
+    ap.add_argument("--surface-tilt", type=float, default=0.0, help="surface height change across the frame, mm")
     ap.add_argument("--blur", type=float, default=1.0, help="defocus blur sigma in px (0 = perfect lens)")
     ap.add_argument("--noise", type=float, default=6.0)
     ap.add_argument("--peak", type=float, default=170, help="laser brightness above ambient (255 clips)")
-    ap.add_argument("--tilt", type=float, default=4.0, help="line tilt across the frame, px")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--upright", action="store_true",
                     help="write frames the right way up. Default writes them upside down, the way our "
                          "inverted camera sees the scene, so calib.json's rotate180=true undoes it.")
     args = ap.parse_args()
 
-    A, B, truth = make_pair(grooves=parse_grooves(args.grooves), blur=args.blur, noise=args.noise,
-                            line_peak=args.peak, tilt_px=args.tilt, seed=args.seed)
+    if args.shims:
+        shims = [float(s) for s in args.shims.split(",")]
+        write_shim_series(args.prefix, shims, rotate180=not args.upright, blur=args.blur, noise=args.noise,
+                          line_peak=args.peak)
+        print(f"wrote {len(shims)} shim pairs into {args.prefix}/")
+        return
+
+    A, B, truth = make_pair(grooves=parse_grooves(args.grooves), standoff_mm=args.standoff,
+                            surface_tilt_mm=args.surface_tilt, blur=args.blur, noise=args.noise,
+                            line_peak=args.peak, seed=args.seed)
     if not args.upright:
         A, B = cv2.rotate(A, cv2.ROTATE_180), cv2.rotate(B, cv2.ROTATE_180)
         truth["note"] = "frames stored rotated 180 deg (camera mounting); truth arrays are in upright coordinates"

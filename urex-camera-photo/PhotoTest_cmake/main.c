@@ -1,5 +1,10 @@
 /* main.c - UREx CMOS branch: press B1 on the NUCLEO-C542RC to take a photo.
  *
+ * With PAIR_MODE 1 (default) one press takes TWO photos for the laser
+ * pipeline: "A" with the laser off, then "B" with the laser on. The laptop
+ * saves them as pair_<time>_A.jpg / _B.jpg and pipeline/laser_profile.py
+ * subtracts them (B - A leaves only the laser line).
+ *
  *   B1 pressed -> PHOTO to the OpenMV camera (it captures + JPEG-compresses)
  *              -> READ the JPEG back in 512-byte pieces
  *              -> pass each piece straight on to the laptop over the ST-LINK
@@ -8,6 +13,7 @@
  * Replace the main.c that STM32CubeMX2 generated with this file.
  *
  * Text sent to the laptop (each line ends in \n):
+ *   SHOT A | SHOT B                          next photo is laser-off / laser-on (pair mode)
  *   PHOTO <size> <width> <height>            start of a photo
  *   DATA <offset> <n>  followed by n raw bytes   one piece of the JPEG
  *   DONE <crc32 hex>                         all bytes sent (zlib CRC-32)
@@ -20,10 +26,23 @@
 #include "bsp.h"
 #include "proto.h"
 
-#define JPEG_QUALITY     80        /* 1-100, higher = bigger file             */
+#define JPEG_QUALITY     95        /* 1-100. 95 not 80: JPEG's 8x8 blocks blur the
+                                      line by a fraction of a pixel, which is
+                                      exactly the precision we're after       */
+#define DISCARD_FRAMES   2         /* camera throws away this many frames before
+                                      keeping one, so the photo was exposed AFTER
+                                      the laser switched (old frames sit in its
+                                      buffer). 2 frames ~ 70 ms at 30 fps      */
 #define CHUNK            PROTO_CHUNK_MAX
 #define MAX_JPEG_BYTES   (600u * 1024u)
 #define READ_RETRIES     3
+
+/* BJT on D2 (PA10) switches the line laser (sheet UREX-CMOS-003). */
+#define PAIR_MODE        1         /* 1 = each press: A (laser off) then B (laser on)
+                                      0 = one photo per press, as before          */
+#define BJT_DURING_PHOTO 1         /* PAIR_MODE 0 only: 1 = laser on for the photo */
+#define BJT_SETTLE_MS    5         /* wait after switching on, before capturing */
+#define BJT_SELF_TEST    1         /* 1 = blink the BJT 3 times at start-up     */
 
 static uint8_t rx[4 + CHUNK];      /* largest response: offset + one chunk    */
 static frame_t f = { .buf = rx };
@@ -70,20 +89,30 @@ static void fail(const char *why)
     }
 }
 
-static void take_photo(void)
+/* Take one photo and pass it to the laptop. laser: 1 = BJT on during capture.
+ * Returns 0 if the whole photo arrived. */
+static int take_photo(int laser)
 {
     bsp_led(1);
 
-    /* 1. Ask the camera to capture and compress one frame. */
-    uint8_t q = JPEG_QUALITY;
-    int r = transact(CMD_PHOTO, &q, 1, 3000);
+    /* 1. Ask the camera to capture and compress one frame.
+     *    The laser is on only for the capture itself, and the camera discards
+     *    DISCARD_FRAMES frames first so the kept one is really lit (or unlit).
+     *    Both photos of a pair discard the same number, so they match. */
+    if (laser) {
+        bsp_bjt(1);
+        bsp_delay_ms(BJT_SETTLE_MS);
+    }
+    uint8_t req_photo[2] = { JPEG_QUALITY, DISCARD_FRAMES };
+    int r = transact(CMD_PHOTO, req_photo, sizeof req_photo, 3000);
+    bsp_bjt(0);                                    /* never leave it on */
     if (r || f.len < 10) {
         fail(r == -3 ? "crc error on PHOTO" : "camera did not answer PHOTO");
-        return;
+        return -1;
     }
     uint32_t size = get_u32(&rx[0]);
     uint16_t w = get_u16(&rx[4]), h = get_u16(&rx[6]), shot = get_u16(&rx[8]);
-    if (size == 0 || size > MAX_JPEG_BYTES) { fail("bad photo size"); return; }
+    if (size == 0 || size > MAX_JPEG_BYTES) { fail("bad photo size"); return -1; }
 
     snprintf(line, sizeof line, "PHOTO %lu %u %u\n", (unsigned long)size, w, h);
     bsp_vcp_print(line);
@@ -100,7 +129,7 @@ static void take_photo(void)
         for (int t = 0; t < READ_RETRIES && !ok; t++)   /* a piece can be asked for again */
             ok = transact(CMD_READ, req, sizeof req, 500) == 0
                  && f.len == 4u + n && get_u32(rx) == off;
-        if (!ok) { fail("lost a piece of the photo"); return; }
+        if (!ok) { fail("lost a piece of the photo"); return -1; }
 
         snprintf(line, sizeof line, "DATA %lu %u\n", (unsigned long)off, n);
         bsp_vcp_print(line);
@@ -116,6 +145,17 @@ static void take_photo(void)
         bsp_vcp_print(line);
     }
     bsp_led(0);
+    return 0;
+}
+
+/* One press in pair mode: laser-off photo A, then laser-on photo B, as close
+ * together as the link allows (hold the device still for ~3 s). */
+static void take_pair(void)
+{
+    bsp_vcp_print("SHOT A\n");
+    if (take_photo(0)) return;
+    bsp_vcp_print("SHOT B\n");
+    take_photo(1);
 }
 
 int main(void)
@@ -124,7 +164,16 @@ int main(void)
     if (mx_system_init() != SYSTEM_OK) return -1;
     if (bsp_init() != 0) return -1;
 
-    bsp_vcp_print("\nUREx camera link - press B1 (blue button) to take a photo\n");
+    bsp_vcp_print(PAIR_MODE ? "\nUREx camera link - press B1 for a laser-off/laser-on photo pair\n"
+                            : "\nUREx camera link - press B1 (blue button) to take a photo\n");
+
+    if (BJT_SELF_TEST) {                           /* check the BJT wiring */
+        bsp_vcp_print("BJT self-test: D2 on/off 3 times\n");
+        for (int i = 0; i < 3; i++) {
+            bsp_bjt(1); bsp_delay_ms(300);
+            bsp_bjt(0); bsp_delay_ms(300);
+        }
+    }
 
     /* The OpenMV board needs a couple of seconds to boot and run main.py. */
     int online = 0;
@@ -142,8 +191,10 @@ int main(void)
 
         if (!camera_ping()) {
             fail("camera not answering");
+        } else if (PAIR_MODE) {
+            take_pair();
         } else {
-            take_photo();
+            take_photo(BJT_DURING_PHOTO);
         }
         while (bsp_button()) { }                   /* wait for release */
         bsp_delay_ms(20);

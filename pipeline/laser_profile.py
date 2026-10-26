@@ -16,13 +16,22 @@ one at a time):
                         to a fraction of a pixel with an intensity-weighted
                         centroid in a +-3 px window. Reject columns whose peak
                         is too dim, too wide, or too far from their neighbours.
-  5. shoulder line      the tread surface is the straight line most columns
-                        agree on. A RANSAC fit finds it even though the groove
-                        columns are far away from it.
-  6. depth              residual (px) * mm_per_px_depth from calib.json
-  7. grooves            runs of columns deeper than 1 mm and wider than 4 mm.
+  5. triangulate        turn each column's line row into an absolute height
+                        z (mm beyond the reference plane) with the calibration
+                        polynomial z(column, row) that calibrate.py measured.
+                        Without one, fall back to row * mm_per_px_depth (only
+                        good to ~0.3 mm for shallow grooves; see calibrate.py).
+  6. shoulder + depth   the tread surface is the straight line (in mm) most
+                        columns agree on. RANSAC finds it even though the groove
+                        columns are far away from it. depth = z - shoulder.
+  7. grooves            runs of columns deeper than 0.5 mm and wider than 4 mm
+                        (after a 5-column median to stop noise splitting a run).
+                        The 0.5 mm threshold is deliberately far below the 1.6 mm
+                        legal limit: a worn groove must be FOUND, then fail.
                         Each groove's depth = median of its central half.
-                        PASS if every groove >= 1.6 mm.
+                        PASS if every groove >= 1.6 mm. If expected_grooves is
+                        set and fewer are found -> CHECK (a bald groove
+                        looks like no groove at all).
 
 Everything is plain numpy so it can be ported to the OpenMV board (ulab) later:
 see openmv_profile.py for the port of steps 2-4.
@@ -36,8 +45,8 @@ import numpy as np
 
 DEFAULT_CALIB = {
     "mm_per_px_depth": 0.249, "mm_per_px_lateral": 0.35, "depth_sign": 1, "rotate180": True,
-    "min_contrast": 40, "line_sigma_px": 1.5, "groove_min_depth_mm": 1.0,
-    "groove_min_width_mm": 4.0, "legal_min_depth_mm": 1.6,
+    "min_contrast": 40, "line_sigma_px": 1.5, "groove_min_depth_mm": 0.5,
+    "groove_min_width_mm": 4.0, "legal_min_depth_mm": 1.6, "expected_grooves": None,
 }
 
 
@@ -142,16 +151,43 @@ def ransac_line(x, y, thresh_px=1.0, iters=300, seed=0):
     return a, b, best_in.sum() / len(xs)
 
 
-# ------------------------------------------------------------- 6. depth
-def depth_from_line(x, y, a, b, calib):
-    resid = y - (a * x + b)                               # px, + = line moved "down"
-    return calib["depth_sign"] * resid * calib["mm_per_px_depth"]
+# -------------------------------------------------------- 5. triangulate
+def poly_design(u, v, deg_x, deg_y):
+    """Columns u^i * v^j for i <= deg_x, j <= deg_y (u, v already scaled to 0..1)."""
+    return np.stack([u ** i * v ** j for i in range(deg_x + 1) for j in range(deg_y + 1)], axis=-1)
+
+
+def height_mm(x, y, calib, shape):
+    """Line row y (px) in column x -> surface distance z (mm) beyond the reference plane.
+
+    With calib["height_poly"] (written by calibrate.py) this is the measured
+    curve for each column, which already includes the laser angle, the lens,
+    its distortion and any tilt of the laser vs the sensor. Without it, it is
+    the straight-line guess z = sign * y * mm_per_px_depth (offset unknown, which
+    is fine because only differences from the shoulder are used)."""
+    hp = calib.get("height_poly")
+    if hp is None:
+        return calib["depth_sign"] * y * calib["mm_per_px_depth"]
+    h, w = shape
+    if (hp["w"], hp["h"]) != (w, h):
+        raise ValueError(f"calibration was made at {hp['w']}x{hp['h']} but this image is {w}x{h}: "
+                         f"recalibrate or change FRAMESIZE back")
+    u, v = x / (w - 1), y / (h - 1)
+    z = poly_design(np.nan_to_num(u), np.nan_to_num(v), hp["deg_x"], hp["deg_y"]) @ np.asarray(hp["coef"])
+    z[np.isnan(y)] = np.nan
+    # outside the calibrated range the polynomial is a guess: refuse it
+    lo, hi = hp.get("z_range", (-np.inf, np.inf))
+    margin = 0.1 * (hi - lo)
+    z[(z < lo - margin) | (z > hi + margin)] = np.nan
+    return z
 
 
 # ------------------------------------------------------------ 7. grooves
 def find_grooves(depth_mm, calib):
-    deep = depth_mm > calib["groove_min_depth_mm"]
-    deep = np.where(np.isnan(depth_mm), False, deep)
+    # decide WHERE the grooves are on a median-smoothed copy, so one noisy column
+    # can't split a groove into pieces too narrow to count; measure on the raw data
+    sm = median_nan(depth_mm, 5)
+    deep = np.where(np.isnan(sm), False, sm > calib["groove_min_depth_mm"])
     grooves = []
     i, w = 0, len(depth_mm)
     while i < w:
@@ -180,8 +216,9 @@ def analyse(on_path, off_path=None, calib=None):
     diff = smooth(subtract(on, off), sigma=max(0.7, calib["line_sigma_px"] * 0.6))
     y, contrast = find_line(diff, min_contrast=calib["min_contrast"])
     x = np.arange(len(y), dtype=np.float64)
-    a, b, inlier_frac = ransac_line(x, y)
-    depth = depth_from_line(x, y, a, b, calib)
+    z = height_mm(x, y, calib, diff.shape)                 # 5. triangulate
+    a, b, inlier_frac = ransac_line(x, z, thresh_px=calib.get("ransac_thresh_mm", 0.3))
+    depth = z - (a * x + b)                                # 6. + = below the tread surface
     grooves = find_grooves(depth, calib)
     warnings = []
     # Grooves are always LOWER than the tread surface. If the big deviations from
@@ -191,23 +228,41 @@ def analyse(on_path, off_path=None, calib=None):
     if len(big) > 10 and np.median(big) < 0:
         warnings.append("most deviations are negative: flip depth_sign in calib.json (or rotate180)")
 
-    valid_frac = float(np.mean(~np.isnan(y)))
-    mean_contrast = float(np.nanmean(contrast[~np.isnan(y)])) if valid_frac else 0.0
+    calibrated = "height_poly" in calib
+    if not calibrated:
+        warnings.append("no height_poly in calib.json: using the straight-line mm_per_px_depth "
+                        "(deep grooves read too shallow). Run calibrate.py.")
+    valid_frac = float(np.mean(~np.isnan(z)))
+    mean_contrast = float(np.nanmean(contrast[~np.isnan(z)])) if valid_frac else 0.0
     quality_ok = valid_frac >= 0.9 and mean_contrast > 60       # the CHECK state in the firmware sketch
     worst = min((g["depth_mm"] for g in grooves), default=None)
     result = {
         "on": on_path, "off": off_path,
         "valid_columns_frac": round(valid_frac, 3),
         "mean_contrast": round(mean_contrast, 1),
-        "shoulder_line": {"slope_px_per_col": float(a), "intercept_px": float(b), "inlier_frac": round(float(inlier_frac), 3)},
+        "shoulder_line": {"slope_mm_per_col": float(a), "intercept_mm": float(b),
+                          "inlier_frac": round(float(inlier_frac), 3),
+                          # how far the tread surface sat beyond the reference plane, at the
+                          # frame centre. Only meaningful when calibrated; expect 0-3 mm.
+                          "standoff_mm": round(float(a * (len(x) - 1) / 2 + b), 3) if calibrated else None},
         "grooves": grooves,
         "min_groove_depth_mm": worst,
         "quality_ok": bool(quality_ok),
         "warnings": warnings,
-        "verdict": ("NO_GROOVE" if not grooves else
-                    "FAIL" if worst < calib["legal_min_depth_mm"] else "PASS") if quality_ok else "RETAKE",
+        "verdict": verdict(grooves, worst, quality_ok, calib),
     }
-    return result, dict(diff=diff, y=y, x=x, a=a, b=b, depth=depth, on=on)
+    return result, dict(diff=diff, y=y, z=z, x=x, a=a, b=b, depth=depth, on=on)
+
+
+def verdict(grooves, worst, quality_ok, calib):
+    if not quality_ok:
+        return "RETAKE"                       # can't judge this shot: take it again
+    if grooves and worst < calib["legal_min_depth_mm"]:
+        return "FAIL"                         # a groove under the legal limit
+    exp = calib.get("expected_grooves")
+    if not grooves or (exp and len(grooves) < exp):
+        return "CHECK"                        # missing groove: worn flat, or line off the tread
+    return "PASS"
 
 
 def plot(result, inter, out_path):
@@ -221,7 +276,6 @@ def plot(result, inter, out_path):
     ax[0].set_title("laser-on frame")
     ax[1].imshow(inter["diff"], cmap="magma", aspect="auto")
     ax[1].plot(inter["x"], inter["y"], ".", ms=2, color="cyan", label="line centre (sub-pixel)")
-    ax[1].plot(inter["x"], inter["a"] * inter["x"] + inter["b"], "--", color="white", lw=1, label="shoulder (RANSAC)")
     ax[1].set_title("on - off, with detected line")
     ax[1].legend(loc="upper right", fontsize=8)
     ax[2].plot(inter["x"], inter["depth"], color="tab:blue")
