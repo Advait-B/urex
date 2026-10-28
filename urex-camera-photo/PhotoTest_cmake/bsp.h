@@ -26,6 +26,7 @@ void     bsp_vcp_print(const char *s);
 
 int      bsp_button(void);          /* B1 (blue, PC13): 1 = pressed */
 void     bsp_led(int on);           /* LD1 (green, PA5)             */
+void     bsp_bjt(int on);           /* D2 (PA10) -> base resistor -> BJT: 1 = BJT on */
 void     bsp_delay_ms(uint32_t ms);
 uint32_t bsp_millis(void);
 

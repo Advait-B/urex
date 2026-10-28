@@ -16,6 +16,8 @@
 
 #define LED_PORT    HAL_GPIOA
 #define LED_PIN     HAL_GPIO_PIN_5      /* LD1 green, via SB8 */
+#define BJT_PORT    HAL_GPIOA
+#define BJT_PIN     HAL_GPIO_PIN_10     /* Arduino D2 (CN9-3) -> BJT base resistor */
 #define BTN_PORT    HAL_GPIOC
 #define BTN_PIN     HAL_GPIO_PIN_13     /* B1 blue, high when pressed */
 
@@ -57,6 +59,8 @@ int bsp_init(void)
     g.init_state  = HAL_GPIO_PIN_RESET;
     if (HAL_GPIO_Init(LED_PORT, LED_PIN, &g) != HAL_OK)
         return -2;
+    if (HAL_GPIO_Init(BJT_PORT, BJT_PIN, &g) != HAL_OK)   /* same settings, starts LOW = BJT off */
+        return -4;
 
     HAL_RCC_GPIOC_EnableClock();
     g.mode = HAL_GPIO_MODE_INPUT;       /* board has its own pull-down on B1 */
@@ -104,6 +108,11 @@ int bsp_button(void)
 void bsp_led(int on)
 {
     HAL_GPIO_WritePin(LED_PORT, LED_PIN, on ? HAL_GPIO_PIN_SET : HAL_GPIO_PIN_RESET);
+}
+
+void bsp_bjt(int on)
+{
+    HAL_GPIO_WritePin(BJT_PORT, BJT_PIN, on ? HAL_GPIO_PIN_SET : HAL_GPIO_PIN_RESET);
 }
 
 void     bsp_delay_ms(uint32_t ms) { HAL_Delay(ms); }
