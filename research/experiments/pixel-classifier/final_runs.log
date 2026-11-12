@@ -1,0 +1,28 @@
+== cand_hgb ==
+set            line_f1  line_rmse_px  depth_mae_mm  depth_p95_mm depth_bias_mm     miss_rate false_per_fra   verdict_acc false_pass_ra  ms_per_frame
+ideal            0.986         0.172         0.154         0.527         0.142         0.015         0.000         0.987         0.013        68.872
+stress           0.960         0.227         0.273         0.561        -0.007         0.024         0.050         0.970         0.000        78.229
+legal            0.993         0.155         0.044         0.083        -0.008         0.051         0.000         0.987         0.000        73.581
+real     line_f1_ref=0.649  depth_mae_px=8.096  found_ref=3/6  repeat_pair_diff_px=-  usable_recall=0.579  false_measure=0.403  ms_per_frame=66.696
+-> results/cand_hgb.json
+== cand_hgb_local ==
+set            line_f1  line_rmse_px  depth_mae_mm  depth_p95_mm depth_bias_mm     miss_rate false_per_fra   verdict_acc false_pass_ra  ms_per_frame
+ideal            0.982         0.172         0.266         0.852         0.256         0.015         0.000         0.987         0.013        64.115
+stress           0.946         0.225         0.475         0.819         0.265         0.042         0.065         0.965         0.000        68.715
+legal            0.991         0.155         0.071         0.451         0.021         0.051         0.000         0.987         0.000        71.264
+real     line_f1_ref=0.592  depth_mae_px=2.334  found_ref=2/6  repeat_pair_diff_px=-  usable_recall=0.632  false_measure=0.567  ms_per_frame=66.389
+-> results/cand_hgb_local.json
+== cand_lr ==
+set            line_f1  line_rmse_px  depth_mae_mm  depth_p95_mm depth_bias_mm     miss_rate false_per_fra   verdict_acc false_pass_ra  ms_per_frame
+ideal            0.983         0.169         0.132         0.576         0.120         0.015         0.000         0.987         0.013        49.479
+stress           0.943         0.227         0.725         4.066         0.013         0.021         0.140         0.975         0.005        47.859
+legal            0.994         0.153         0.033         0.075        -0.021         0.051         0.000         0.987         0.000        39.593
+real     line_f1_ref=0.702  depth_mae_px=7.073  found_ref=6/6  repeat_pair_diff_px=5.490  usable_recall=0.789  false_measure=0.179  ms_per_frame=35.453
+-> results/cand_lr.json
+== cand_thresh ==
+set            line_f1  line_rmse_px  depth_mae_mm  depth_p95_mm depth_bias_mm     miss_rate false_per_fra   verdict_acc false_pass_ra  ms_per_frame
+ideal            0.985         0.133         0.083         0.287         0.064         0.015         0.000         0.987         0.013        52.167
+stress           0.877         0.221        16.432       119.160        16.242         0.015         0.630         0.975         0.010        48.946
+legal            0.995         0.139         0.030         0.073        -0.024         0.051         0.000         0.987         0.000        52.488
+real     line_f1_ref=0.772  depth_mae_px=67.153  found_ref=6/6  repeat_pair_diff_px=2.390  usable_recall=1.000  false_measure=0.866  ms_per_frame=44.283
+-> results/cand_thresh.json

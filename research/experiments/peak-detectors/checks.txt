@@ -1,0 +1,27 @@
+A. signed v error (px, + = detector reads lower in the image / deeper), points within 1 px of the truth
+   baseline_steger  mean=-0.001 std=0.123 rms=0.123 n=19332
+   pk_steger_s1     mean=-0.002 std=0.125 rms=0.125 n=18333
+   pk_cog           mean=-0.000 std=0.079 rms=0.079 n=18987
+   pk_gauss3        mean=+0.001 std=0.130 rms=0.130 n=18988
+   pk_blais8        mean=-0.000 std=0.075 rms=0.075 n=18995
+   pk_fir           mean=-0.004 std=0.075 rms=0.075 n=18973
+   pk_fir2d         mean=-0.005 std=0.069 rms=0.070 n=18915
+B. oracle line (truth[k::3]) -> default depth stage, 'stress' set
+   phase 0: depth_mae_mm=0.108 p95=0.344 miss=0.006 false=0.005 verdict=1.000
+   phase 1: depth_mae_mm=0.108 p95=0.346 miss=0.006 false=0.005 verdict=1.000
+   phase 2: depth_mae_mm=0.109 p95=0.343 miss=0.006 false=0.005 verdict=1.000
+C. CPU ms per 320x240 frame (mean of 60 ideal frames)
+   background tophat    1.36
+   background tophat1d  0.23
+   background colpct    1.49
+   smooth sigma_v=1.5           0.92
+   smooth sigma_v=1.5 + u=1.5   1.34
+   pk_cog         no chain 2.69   with chain 3.29
+   pk_gauss3      no chain 2.49   with chain 4.73
+   pk_blais8      no chain 2.60   with chain 3.37
+   pk_fir         no chain 2.61   with chain 3.43
+   pk_fir2d       no chain 2.96   with chain 4.35
+   pk_fir2d_rows  no chain 3.38   with chain 4.79
+   baseline_steger steger_points only 9.76   full 11.01
+   pk_steger_s1   steger_points only 9.27   full 9.45
+D. harness line_rmse_px of EXACT points at integer columns (truth interpolated), ideal set: 0.058  (median truth spacing in u 0.191 px)
