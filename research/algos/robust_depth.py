@@ -29,8 +29,9 @@ PX = {"ransac": 1.2, "min_depth": 2.5, "band": 0.7, "irls": 0.30, "lo": 0.35, "b
       "pen": 0.50, "noise": 0.15, "hidden": 2.1}
 # holder constants used by the bias correction (CAD values; see notes/robust-depth.md)
 ZC_MM, TAN_LASER, TYRE_R_MM = 85.0, np.tan(np.radians(35.0)), 480.0
+F_PX, K1 = 2.7 / 3.67 * 320, -0.12                 # lens: focal length in px at 320 wide, radial distortion
 # uncertainty model, tuned on `train` (see experiments/robust-depth/uncertainty.py)
-SIG = {"tilt_deg": 0.75, "floor_mm": 0.03, "corr_px": 3.0, "scale": 1.0}
+SIG = {"tilt_deg": 0.75, "floor_mm": 0.03, "corr_px": 3.0, "scale": 2.0}
 
 
 # ------------------------------------------------------------------ surface
@@ -197,9 +198,22 @@ def correct_depth(coef, u_floor, d_raw, tyre_R=TYRE_R_MM, uc=159.5, parallax=Tru
     return float(d)
 
 
+def lateral_px(u, v, z, width=320, height=240):
+    """Pixel -> position ACROSS the tread, X in mm (pinhole + radial distortion, holder constants), returned
+    as 'ideal pixels' 160 + 2.9*X so that px thresholds keep their meaning. In this coordinate the tread
+    crown is a true parabola and a floor point sits exactly under its own piece of tread (no parallax)."""
+    f = F_PX * width / 320.0
+    xd, yd = (u - (width - 1) / 2) / f, (v - (height - 1) / 2) / f
+    x, y = xd.copy(), yd.copy()
+    for _ in range(3):
+        k = 1 + K1 * (x * x + y * y)
+        x, y = xd / k, yd / k
+    return 160.0 + 2.9 * x * (ZC_MM - z)
+
+
 # -------------------------------------------------------------------- stage
 def stage(u, v, calib=None, surface="ransac", floor="band", detect="default", correct=True, tyre_R=TYRE_R_MM,
-          parallax=True, curvature=True, lo_k=2.5):
+          parallax=True, curvature=True, lo_k=2.5, lateral=True):
     u, v = np.asarray(u, float), np.asarray(v, float)
     P = MM if calib is not None else PX
     unit = "mm" if calib is not None else "px"
@@ -211,19 +225,23 @@ def stage(u, v, calib=None, surface="ransac", floor="band", detect="default", co
         u, v, q = u[ok], v[ok], q[ok]
         if len(u) < 12:
             return {"grooves": [], "surface": None, "inlier_frac": 0.0, "unit": unit}
+    px = u                                                 # image column: used for widths and reported spans
+    lat = bool(lateral and correct and calib is not None)
+    if lat:
+        u = lateral_px(px, v, -q)                          # fit and compare in true lateral position
     coef, inl = fit_surface(u, q, P, surface)
     r = q - np.polyval(coef, u)
     if detect == "shape":
-        runs = detect_shape(u, r, inl, P, lo_k)
+        runs = detect_shape(px, r, inl, P, lo_k)
         keep = np.ones(len(u), bool)                       # shallow grooves are RANSAC inliers: refit without them
         for k in runs:
-            keep[(u >= u[k].min() - 2) & (u <= u[k].max() + 2)] = False
+            keep[(px >= px[k].min() - 2) & (px <= px[k].max() + 2)] = False
         if runs and (keep & inl).sum() >= 12 and np.ptp(u[keep & inl]) > 60:
             coef = np.polyfit(u[keep & inl], q[keep & inl], 2)
             r = q - np.polyval(coef, u)
-            runs = detect_shape(u, r, inl & keep, P, lo_k)
+            runs = detect_shape(px, r, inl & keep, P, lo_k)
     else:
-        runs = find_runs(u, r, P["min_depth"])
+        runs = find_runs(px, r, P["min_depth"])
     fit_pts = inl.copy()
     for k in runs:
         fit_pts[k] = False
@@ -236,8 +254,8 @@ def stage(u, v, calib=None, surface="ransac", floor="band", detect="default", co
         cov = np.linalg.pinv(A.T @ A) * s_surf ** 2 * (fit_pts.sum() / n_eff)
     grooves = []
     for k in runs:
-        k = k[np.argsort(u[k])]
-        uu, rr = u[k], r[k]
+        k = k[np.argsort(px[k])]
+        uu, rr = px[k], r[k]
         d, fm = FLOORS[floor](uu, rr, P)
         if not fm.any():
             d, fm = floor_band(uu, rr, P)
@@ -245,7 +263,11 @@ def stage(u, v, calib=None, surface="ransac", floor="band", detect="default", co
         hidden = bool(floor_px < 3.0 and d > P["hidden"])     # no flat floor seen: the best lower bound is the deepest point
         if hidden:
             d, u_f = float(rr.max()), float(uu[np.argmax(rr)])
-        d_out = correct_depth(coef, u_f, d, tyre_R, parallax=parallax, curvature=curvature) if (correct and calib is not None) else float(d)
+        if lat:                                            # parallax is already gone; only the curvature term is left
+            u_f = float(np.interp(u_f, uu, u[k]))
+            d_out = correct_depth(coef, u_f, d, tyre_R, parallax=False, curvature=curvature)
+        else:
+            d_out = correct_depth(coef, u_f, d, tyre_R, parallax=parallax, curvature=curvature) if (correct and calib is not None) else float(d)
         # --- 1-sigma: floor scatter / sqrt(effective n)  (+)  surface under the groove  (+)  unknown rocking
         n_eff = max(1.0, min(fm.sum(), floor_px / SIG["corr_px"] + 1))
         s_floor = max(float(np.std(rr[fm])), SIG["floor_mm"] if unit == "mm" else P["noise"]) / np.sqrt(n_eff)

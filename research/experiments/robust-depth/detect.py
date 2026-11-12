@@ -24,3 +24,12 @@ for src in ("oracle", "baseline"):
         mb = " ".join(f"{miss[(d >= a) & (d < b)].mean():5.2f}" if ((d >= a) & (d < b)).any() else "   - " for a, b in BINS)
         ff = 1 - r["verdict_acc"] - r["false_pass_rate"]
         print(f"{tag:30s} {src:8s} {r['verdict_acc']:7.3f} {r['false_pass_rate']:9.3f} {ff:9.3f} {r['miss_rate']:5.3f} {r['false_per_frame']:8.3f} | {mb}", flush=True)
+    # hidden floors: how good is the stage's own "lower_bound" flag?  (final stage, all matched grooves)
+    r = C.score(functools.partial(rd.stage, floor="dbscan", detect="shape", lo_k=3.5), name, src, limit)
+    A = [(t, p) for t, p, i in C.pairs(name, r["_outs"], limit) if p]
+    fl = np.array([p["lower_bound"] for t, p in A]); hid = np.array([t["floor_visible_px"] < 3 for t, p in A])
+    e = np.array([p["depth"] - t["depth_mm"] for t, p in A])
+    if fl.any():
+        print(f"   lower_bound flag ({src}): flagged {fl.sum()}/{len(A)}; truth floor hidden among flagged {hid[fl].mean():.2f}; "
+              f"hidden grooves flagged {hid[fl].sum()}/{hid.sum()}; flagged reading <= truth+0.1 mm: {np.mean(e[fl] <= 0.1):.2f}; "
+              f"|err|>0.5 mm: flagged {np.mean(np.abs(e[fl]) > 0.5):.2f} vs unflagged {np.mean(np.abs(e[~fl]) > 0.5):.3f}", flush=True)

@@ -27,11 +27,14 @@ if __name__ == "__main__":
         if what == "surface":
             for s in ("ransac", "huber", "theilsen", "ransac_irls"):
                 row(f"surface={s}", functools.partial(rd.stage, surface=s, correct=False), name, src, limit)
-        if what == "correct":
-            row("parallax only", functools.partial(rd.stage, curvature=False), name, src, limit)
-            row("curvature only", functools.partial(rd.stage, parallax=False), name, src, limit)
+        if what == "correct":                      # bench stage (band floor) + each correction term
+            row("no correction", functools.partial(rd.stage, correct=False), name, src, limit)
+            row("curvature term only", functools.partial(rd.stage, lateral=False, parallax=False), name, src, limit)
+            row("parallax (u-shift) only", functools.partial(rd.stage, lateral=False, curvature=False), name, src, limit)
+            row("parallax (u-shift) + curvature", functools.partial(rd.stage, lateral=False), name, src, limit)
+            row("lateral-X fit only", functools.partial(rd.stage, curvature=False), name, src, limit)
             for R in (384, 480, 576):
-                row(f"both, R={R}", functools.partial(rd.stage, tyre_R=R), name, src, limit)
+                row(f"lateral-X fit + curvature R={R}", functools.partial(rd.stage, tyre_R=R), name, src, limit)
         if what == "detect":
             row("dbscan, detect=default", functools.partial(rd.stage, floor="dbscan"), name, src, limit)
             row("dbscan, detect=shape", functools.partial(rd.stage, floor="dbscan", detect="shape"), name, src, limit)
