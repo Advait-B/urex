@@ -1,0 +1,24 @@
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+Group & Algorithm & Cov. & Line F1 & MAE px & Median px & Gross & Miss & False \\
+\midrule
+Reference & Baseline (Steger ridge) & 1.00 & 0.385 & 8.11 & 2.81 & 0.494 & 0.466 & 0.327 \\
+\addlinespace[2pt]
+Per-column peak & Centre of gravity & 1.00 & 0.757 & 2.94 & 0.54 & 0.196 & 0.061 & 0.740 \\
+ & 2-D Gaussian + parabola & 1.00 & 0.841 & 2.63 & 0.51 & 0.127 & 0.080 & 0.427 \\
+\addlinespace[2pt]
+Tracking & Viterbi line tracking & 1.00 & \textbf{0.905} & 3.66 & \textbf{0.40} & 0.103 & \textbf{0.043} & 0.233 \\
+\addlinespace[2pt]
+Learned line & U-Net, augmented & 1.00 & 0.903 & 1.63 & 0.56 & 0.077 & 0.049 & 0.047 \\
+ & U-Net, no augmentation & 1.00 & 0.744 & 1.55 & 0.69 & 0.115 & 0.092 & 0.253 \\
+ & Candidate classifier (GBM) & 1.00 & 0.516 & 1.87 & 0.45 & 0.133 & 0.632 & 0.007 \\
+\addlinespace[2pt]
+Depth stage & Baseline line + robust depth & 1.00 & 0.385 & 7.06 & 0.61 & 0.354 & 0.515 & 0.300 \\
+\addlinespace[2pt]
+Gate & Baseline + quality gate & 0.34 & 0.785 & 3.77 & 1.96 & 0.294 & 0.056 & 0.196 \\
+\addlinespace[2pt]
+Two frames & Laser on/off subtraction & 1.00 & 0.753 & \textbf{1.11} & 0.56 & \textbf{0.045} & \textbf{0.043} & 0.453 \\
+\addlinespace[2pt]
+No geometry & End-to-end CNN & 0.99 & -- & -- & -- & -- & 1.000 & \textbf{0.000} \\
+\bottomrule
+\end{tabular}

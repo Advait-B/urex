@@ -1,0 +1,24 @@
+\begin{tabular}{@{}llrrrrrrrrrr@{}}
+\toprule
+Group & Algorithm & Cov. & MAE & Median & P95 & Gross & Miss & False & Verdict & F.pass & CPU ms \\
+\midrule
+Reference & Baseline (Steger ridge) & 1.00 & 0.147 & 0.054 & 0.474 & 0.008 & 0.090 & \textbf{0.000} & 0.980 & 0.013 & 28.1 \\
+\addlinespace[2pt]
+Per-column peak & Centre of gravity & 1.00 & 0.062 & 0.039 & 0.191 & \textbf{0.000} & 0.030 & \textbf{0.000} & 0.987 & 0.013 & 20.2 \\
+ & 2-D Gaussian + parabola & 1.00 & 0.060 & 0.039 & 0.176 & \textbf{0.000} & 0.041 & \textbf{0.000} & 0.987 & 0.013 & 20.9 \\
+\addlinespace[2pt]
+Tracking & Viterbi line tracking & 1.00 & 0.064 & 0.041 & 0.186 & \textbf{0.000} & 0.015 & \textbf{0.000} & 0.987 & 0.013 & 27.5 \\
+\addlinespace[2pt]
+Learned line & U-Net, augmented & 1.00 & 0.061 & 0.040 & 0.173 & \textbf{0.000} & 0.019 & \textbf{0.000} & 0.987 & 0.013 & 63.9 \\
+ & U-Net, no augmentation & 1.00 & \textbf{0.055} & 0.032 & \textbf{0.156} & \textbf{0.000} & 0.011 & \textbf{0.000} & 0.987 & 0.013 & 56.7 \\
+ & Candidate classifier (GBM) & 1.00 & 0.154 & 0.079 & 0.527 & \textbf{0.000} & 0.015 & \textbf{0.000} & 0.987 & 0.013 & 32.1 \\
+\addlinespace[2pt]
+Depth stage & Baseline line + robust depth & 1.00 & 0.081 & \textbf{0.022} & \textbf{0.157} & 0.004 & 0.082 & \textbf{0.000} & 0.987 & \textbf{0.000} & 37.0 \\
+\addlinespace[2pt]
+Gate & Baseline + quality gate & 0.88 & 0.107 & 0.048 & 0.433 & 0.005 & 0.080 & \textbf{0.000} & 0.985 & 0.013 & 72.8 \\
+\addlinespace[2pt]
+Two frames & Laser on/off subtraction & 1.00 & 0.062 & 0.037 & 0.192 & \textbf{0.000} & 0.015 & \textbf{0.000} & 0.987 & 0.013 & 18.5 \\
+\addlinespace[2pt]
+No geometry & End-to-end CNN & 1.00 & 0.100 & 0.074 & 0.277 & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & \textbf{1.000} & \textbf{0.000} & 2.3 \\
+\bottomrule
+\end{tabular}

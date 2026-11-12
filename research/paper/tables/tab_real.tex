@@ -1,0 +1,24 @@
+\begin{tabular}{@{}llrrrrrrr@{}}
+\toprule
+Group & Algorithm & Line F1 & $\Delta$ px & Found & Within 3 px & Usable kept & F.meas (no laser) & F.meas (laser) \\
+\midrule
+Reference & Baseline (Steger ridge) & \textbf{1.000} & 0.13 & 6/6 & 6/6 & \textbf{0.947} & 0.691 & 0.750 \\
+\addlinespace[2pt]
+Per-column peak & Centre of gravity & 0.891 & 5.11 & 5/6 & 3/6 & 0.789 & 0.709 & 0.667 \\
+ & 2-D Gaussian + parabola & 0.926 & 1.14 & 6/6 & 5/6 & 0.895 & 0.818 & 0.667 \\
+\addlinespace[2pt]
+Tracking & Viterbi line tracking & 0.943 & 1.13 & 6/6 & 5/6 & 0.842 & 0.545 & 0.833 \\
+\addlinespace[2pt]
+Learned line & U-Net, augmented & 0.920 & 1.08 & 6/6 & 5/6 & 0.895 & 0.455 & 0.667 \\
+ & U-Net, no augmentation & 0.895 & 7.15 & 6/6 & 3/6 & 0.895 & 0.455 & 0.333 \\
+ & Candidate classifier (GBM) & 0.869 & 10.93 & 2/6 & 1/6 & 0.579 & 0.473 & 0.083 \\
+\addlinespace[2pt]
+Depth stage & Baseline line + robust depth & \textbf{1.000} & 1.19 & 6/6 & 6/6 & \textbf{0.947} & 0.636 & 0.583 \\
+\addlinespace[2pt]
+Gate & Baseline + quality gate & \textbf{1.000} & 0.13 & 6/6 & 6/6 & 0.895 & 0.036 & 0.250 \\
+\addlinespace[2pt]
+Two frames & Laser on/off subtraction & \textbf{1.000} & 0.13 & 6/6 & 6/6 & \textbf{0.947} & 0.691 & 0.750 \\
+\addlinespace[2pt]
+No geometry & End-to-end CNN & -- & -- & 0/6 & 0/6 & 0.895 & \textbf{0.000} & \textbf{0.000} \\
+\bottomrule
+\end{tabular}
