@@ -125,6 +125,14 @@ def main():
         port = args.port or find_port()
         if port is None:
             sys.exit("No Nucleo found. Plug in the ST-LINK USB cable, or pass --port, or use --folder.")
+        try:                                                   # check the port is free before starting
+            import serial
+            serial.Serial(port, 115200, timeout=1).close()
+        except Exception as e:
+            sys.exit(f"Cannot open {port}: {e}\n"
+                     "Another program is using the port. Close the serial terminal in STM32CubeIDE, any other\n"
+                     "window running session.py / get_photo.py, PuTTY or the Arduino serial monitor, then try again.\n"
+                     "If that does not help, unplug and replug the Nucleo. Wrong port? Pass --port COMx.")
         cam = subprocess.Popen([sys.executable, "get_photo.py", port, "--out", photos], cwd=PC_DIR)
         print(f"Saving photos to {photos}\nPress B1 on the Nucleo for each photo. Ctrl+C when you are done.\n")
 
