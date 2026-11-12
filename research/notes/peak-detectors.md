@@ -176,7 +176,7 @@ is higher (0.791 against 0.701): more points also means more "depths" on junk fr
 
 **`pk_fir2d_rows`**: top-hat, 2-D Gaussian (sigma 1.5 px) response, peaks along columns (and along rows where the
 line is steep), 3-point parabola, chain selection.
-- Best line RMSE under blur, speckle and low signal; immune to saturation (the real line is saturated on 6 of the 12 reference frames' majority of samples).
+- Best line RMSE under blur, speckle and low signal; immune to saturation (on 8 of the 12 real reference frames at least half of the sampled line points are clipped).
 - Depth on `ideal`/`legal` at the oracle level; `stress` verdict accuracy 0.960 with 0 false passes (baseline 0.915, 0.015).
 - The only per-column variant that keeps the groove on all 6 real truck-tyre frames.
 - About 0.45x the baseline's CPU time, and only FIR filters + comparisons.
