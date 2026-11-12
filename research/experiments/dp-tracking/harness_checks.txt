@@ -1,0 +1,22 @@
+1. ideal: share of scored truth samples that are dimmer than 25 % of the line peak: mean 0.043, max 0.148
+1. stress: share of scored truth samples that are dimmer than 25 % of the line peak: mean 0.032, max 0.148
+1. legal: share of scored truth samples that are dimmer than 25 % of the line peak: mean 0.002, max 0.026
+2. baseline_steger ideal: false grooves = 14: 14 overlap a true groove (duplicate / out-of-view groove), 0 are phantoms
+2. baseline_steger stress: false grooves = 56: 14 overlap a true groove (duplicate / out-of-view groove), 42 are phantoms
+2. baseline_steger legal: false grooves = 19: 19 overlap a true groove (duplicate / out-of-view groove), 0 are phantoms
+2. dp_dense ideal: false grooves = 2: 2 overlap a true groove (duplicate / out-of-view groove), 0 are phantoms
+2. dp_dense stress: false grooves = 25: 2 overlap a true groove (duplicate / out-of-view groove), 23 are phantoms
+2. dp_dense legal: false grooves = 0: 0 overlap a true groove (duplicate / out-of-view groove), 0 are phantoms
+3. ideal[:60]: 1988 of 19077 line columns (10.4%) have no pixel that passes the +-0.5 px test
+4. photo_20261028_162036.jpg steps   ref points  246  dp_dense P 0.78 R 0.85 F1 0.81
+4. photo_20261028_162050.jpg steps   ref points  341  dp_dense P 0.78 R 0.46 F1 0.58
+4. photo_20261028_162117.jpg steps   ref points  396  dp_dense P 0.67 R 0.46 F1 0.55
+4. photo_20261028_162148.jpg steps   ref points  752  dp_dense P 0.64 R 0.24 F1 0.35
+4. photo_20261028_162156.jpg steps   ref points  702  dp_dense P 0.80 R 0.35 F1 0.49
+4. photo_20261028_162241.jpg steps   ref points  378  dp_dense P 0.74 R 0.55 F1 0.63
+4. photo_20261030_154446.jpg groove  ref points  291  dp_dense P 1.00 R 0.92 F1 0.96
+4. photo_20261030_154510.jpg groove  ref points  229  dp_dense P 0.78 R 0.96 F1 0.86
+4. photo_20261030_154554.jpg groove  ref points  301  dp_dense P 0.98 R 0.95 F1 0.96
+4. photo_20261030_154820.jpg groove  ref points  280  dp_dense P 1.00 R 0.93 F1 0.96
+4. photo_20261030_154854.jpg groove  ref points  275  dp_dense P 0.92 R 0.96 F1 0.94
+4. photo_20261030_160117.jpg groove  ref points  282  dp_dense P 1.00 R 0.95 F1 0.97
