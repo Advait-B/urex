@@ -127,7 +127,10 @@ def groove_depth(X, Y, s):
         xg = xg + s["zigzag_mm"] * np.abs(((Y / s["zigzag_period"]) % 1.0) * 4 - 2) - s["zigzag_mm"]
     for gr in s["grooves"]:
         t = gr["w"] / 2 - np.abs(xg - gr["x"])
-        g = np.maximum(g, np.clip(t / np.tan(np.radians(gr["wall_deg"])), 0, gr["d"]))
+        if gr.get("shape") == "round":             # U-shaped groove: rounded floor, few deepest points
+            g = np.maximum(g, gr["d"] * np.sqrt(np.clip(1 - (1 - np.clip(t / (gr["w"] / 2), 0, 1)) ** 2, 0, 1)))
+        else:
+            g = np.maximum(g, np.clip(t / np.tan(np.radians(gr["wall_deg"])), 0, gr["d"]))
     for st in s["stones"]:
         bump = st["h"] * np.exp(-((X - st["x"]) ** 2 + (Y - st["y"]) ** 2) / (2 * (st["r"] / 2) ** 2))
         g = np.maximum(g - bump, 0)
