@@ -9,7 +9,8 @@
 Depth: the default stage in bench/depth.py. Uses only the laser-on frame.
 
 Variants (set by the wrapper modules cand_lr.py / cand_thresh.py):
-  MODEL = "hgb"     models/cand_hgb.pkl    (default)
+  MODEL = "hgb"        models/cand_hgb.pkl        all 30 features (default)
+  MODEL = "hgb_local"  models/cand_hgb_local.pkl  without the frame-level 'distance from the modal row' features
   MODEL = "lr"      models/cand_lr.json    logistic regression: 31 weights, runs anywhere
   MODEL = "thresh"  one threshold on the single best feature (the simplest alternative)
 """
@@ -135,8 +136,8 @@ def features(c):
 
 def _load():
     if MODEL not in _cache:
-        if MODEL == "hgb":
-            with open(os.path.join(MODELS, "cand_hgb.pkl"), "rb") as fh:
+        if MODEL.startswith("hgb"):
+            with open(os.path.join(MODELS, f"cand_{MODEL}.pkl"), "rb") as fh:
                 _cache[MODEL] = pickle.load(fh)
         else:
             with open(os.path.join(MODELS, f"cand_{MODEL}.json")) as fh:
@@ -147,8 +148,8 @@ def _load():
 def predict(F):
     """P(laser) for every candidate."""
     m = _load()
-    if MODEL == "hgb":
-        return m["clf"].predict_proba(F)[:, 1]
+    if MODEL.startswith("hgb"):                                # "cols": the feature subset this model was trained on
+        return m["clf"].predict_proba(F[:, m["cols"]] if "cols" in m else F)[:, 1]
     if MODEL == "lr":                                          # z-score, dot product, sigmoid
         z = (np.sign(F) * np.log1p(np.abs(F)) - np.array(m["mean"])) / np.array(m["scale"])
         return 1 / (1 + np.exp(-(z @ np.array(m["coef"]) + m["intercept"])))
