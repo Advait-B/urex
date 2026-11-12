@@ -2,18 +2,15 @@
 
 For every model: fit residual, error on a plate it has NOT seen (interior plates = interpolation,
 the two end plates = 2 mm of extrapolation) and the calibration-only depth error (common.depth_errors).
-    python -m experiments.calibration.models_cv      -> out/models_cv.md, figs/models_cv.png
+    python -m experiments.calibration.models_cv      -> out/models_cv.md
 """
 import json
 import warnings
 
-import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 import numpy as np
 
 from algos import calib_models as cm
-from .common import ALL15, FIGS, OUT, depth_errors, plate_set, rms, table
+from .common import ALL15, OUT, depth_errors, plate_set, rms, table
 
 warnings.filterwarnings("ignore")
 MODELS = ["poly11", "poly12", "poly22", "poly23", "poly43", "poly65", "poly87", "phys4", "phys5", "phys7", "spline", "gp"]
@@ -44,11 +41,3 @@ print(md)
 open(f"{OUT}/models_cv.md", "w").write(md + "\n")
 json.dump(res, open(f"{OUT}/models_cv.json", "w"), indent=1)
 
-fig, ax = plt.subplots(figsize=(7.5, 3.6))
-x = np.arange(len(MODELS))
-for k, lab, c in (("fit", "fit residual", "#9aa5b1"), ("cv_in", "left-out interior plate", "#2a78b5"), ("cv_end", "left-out end plate (extrapolation)", "#d1603d")):
-    ax.plot(x, [np.mean(res[n][k]) for n in MODELS], "o-", label=lab, color=c)
-ax.set_yscale("log"); ax.set_xticks(x); ax.set_xticklabels([f"{n}\n({res[n]['n']})" for n in MODELS], fontsize=8)
-ax.set_ylabel("height error RMS (mm)"); ax.grid(alpha=0.3, which="both"); ax.legend(fontsize=8)
-ax.set_title("Calibration models, 15 plates: fit vs leave-one-plate-out (free numbers in brackets)", fontsize=9)
-fig.tight_layout(); fig.savefig(f"{FIGS}/models_cv.png", dpi=130)

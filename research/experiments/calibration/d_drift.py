@@ -5,7 +5,7 @@
      calibration. What does it read, and how does that compare with its repeatability without drift?
   3. correction from that one photo:  poly43 + row shift  (shift the image rows so the plate reads 0)
                                       phys5 + re-aim      (PhysModel.refit_plane: re-solve theta, roll)
-  4. 100 'ideal' test scenes re-rendered with the drifted device, scored by the harness's eval_sim.
+  4. 60 'ideal' test scenes re-rendered with the drifted device, scored by the harness's eval_sim.
     python -m experiments.calibration.d_drift    -> out/d_drift.md, figs/d_drift.png
 """
 import matplotlib
@@ -71,7 +71,7 @@ for name, dev in DEV.items():
         print(f"focal +1 %: {k}: bias@16 {curves[name][k][4].mean():+.3f}, RMS {rms(curves[name][k]):.3f}")
     DEV[name] = (dev, fixes)
 
-# 4. 100 'ideal' test scenes re-rendered with the drifted device. Baseline (Steger) line for three
+# 4. 60 'ideal' test scenes re-rendered with the drifted device. Baseline (Steger) line for three
 #    calibrations, plus the TRUE line for the re-aimed one (= what is left that is not line noise).
 #    The mean is pulled around by a few line outliers, so the median error is reported as well.
 def score(items, lines, model):
@@ -79,7 +79,7 @@ def score(items, lines, model):
     return f"{r['depth_mae_mm']:.3f} / {r['depth_bias_mm']:+.3f} / {np.median(np.subtract(r['_pred_mm'], r['_true_mm'])):+.3f}"
 
 
-ideal = datasets.load_sim("ideal")[:100]
+ideal = datasets.load_sim("ideal")[:60]
 rows4 = []
 for name, (dev, fixes) in DEV.items():
     items, st, tr = [], {}, {}
@@ -97,7 +97,7 @@ md = ("**1. Old poly43 calibration on the drifted device (exact line, flat surfa
       + table(rows2, ["drift", "0 mm plate reads (mm)", "tilt across 300 px (mm)", "-12 mm plate reads error (mm)", "difference (-12) - (0)"])
       + "\n\n**3. Depth error after a one-photo correction: bias @16 mm / RMS all depths (mm)**\n\n"
       + table(rows3, ["drift", "poly43 old", "poly43 + row shift", "phys5 old", "phys5 + re-aim"])
-      + "\n\n**4. 100 'ideal' scenes re-rendered with the drifted device: depth MAE / bias / median error (mm)**\n\n"
+      + "\n\n**4. 60 'ideal' scenes re-rendered with the drifted device: depth MAE / bias / median error (mm)**\n\n"
       + table(rows4, ["drift", "poly43 old (baseline line)", "poly43 + row shift (baseline line)", "phys5 + re-aim (baseline line)", "phys5 + re-aim (TRUE line)"]))
 print(md)
 open(f"{OUT}/d_drift.md", "w").write(md + "\n")
