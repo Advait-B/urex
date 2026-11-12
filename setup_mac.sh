@@ -11,7 +11,7 @@ if ! command -v python3 >/dev/null; then
   if command -v brew >/dev/null; then brew install python; else
     warn "Python 3 missing: install from https://www.python.org/downloads/ then re-run"; exit 1; fi
 fi
-python3 -m venv "$ROOT/.venv" && "$ROOT/.venv/bin/pip" install -q --upgrade pip pyserial numpy opencv-python matplotlib \
+python3 -m venv "$ROOT/.venv" && "$ROOT/.venv/bin/pip" install -q --upgrade pip pyserial numpy scipy scikit-learn opencv-python matplotlib \
   && ok "Python $("$ROOT/.venv/bin/python" -V 2>&1 | cut -d' ' -f2) + numpy/opencv (pipeline) + pyserial $("$ROOT/.venv/bin/python" -c 'import serial;print(serial.__version__)')" \
   || warn "pip install failed (check internet)"
 

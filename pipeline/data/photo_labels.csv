@@ -1,0 +1,87 @@
+file,laser,usable,scene,feature,note
+photo_20261008_183746.jpg,0,0,bench,,first photos; no laser
+photo_20261008_184107.jpg,0,0,bench,,first photos; no laser
+photo_20261019_155555.jpg,0,0,bench,,focus test; no laser
+photo_20261019_155605.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160412.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160421.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160727.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160736.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160907.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160913.jpg,0,0,bench,,focus test; no laser
+photo_20261019_160917.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162145.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162543.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162545.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162549.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162551.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162552.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162554.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162555.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162557.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162559.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162601.jpg,0,0,bench,,focus test; no laser
+photo_20261019_162602.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163159.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163207.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163211.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163215.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163242.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163434.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163437.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163442.jpg,0,0,bench,,focus test; no laser
+photo_20261019_163449.jpg,0,0,bench,,focus test; no laser
+photo_20261028_161400.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161405.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161458.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161503.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161509.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161519.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161532.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161546.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161559.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161612.jpg,0,0,bench,,out of focus; no laser
+photo_20261028_161617.jpg,0,0,people,,no laser
+photo_20261028_161633.jpg,0,0,people,,no laser
+photo_20261028_161654.jpg,1,0,bench,,laser glare on glass
+photo_20261028_161711.jpg,1,0,flat,,wide diffuse stripe on breadboard
+photo_20261028_161802.jpg,1,0,flat,,faint line
+photo_20261028_161814.jpg,1,1,flat,step,thin line across table and box
+photo_20261028_161841.jpg,0,0,people,,no laser
+photo_20261028_161941.jpg,0,0,bench,,no laser
+photo_20261028_162036.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162050.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162117.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162148.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162156.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162216.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162241.jpg,1,1,rover_tyre,lug,laser across lugs
+photo_20261028_162731.jpg,0,0,rover_tyre,,wide view; reflections only
+photo_20261028_162734.jpg,0,0,rover_tyre,,wide view; reflections only
+photo_20261028_162753.jpg,0,0,rover_tyre,,wide view; reflections only
+photo_20261028_162847.jpg,0,0,rover_tyre,,wide view; reflections only
+photo_20261028_162902.jpg,0,0,rover_tyre,,wide view; reflections only
+photo_20261028_162915.jpg,1,0,rover_tyre,,wide view; short laser arcs
+photo_20261028_162918.jpg,1,0,rover_tyre,,wide view; short laser arcs
+photo_20261028_162922.jpg,1,0,rover_tyre,,wide view; short laser arcs
+photo_20261030_154014.jpg,0,0,bench,,no laser
+photo_20261030_154102.jpg,0,0,people,,no laser
+photo_20261030_154252.jpg,0,0,bench,,no laser
+photo_20261030_154312.jpg,1,0,bench,,faint line on ceiling
+photo_20261030_154337.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154403.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154446.jpg,1,1,truck_tyre,cut,laser crosses a narrow cut; no groove in view
+photo_20261030_154510.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154548.jpg,0,0,bench,,no laser
+photo_20261030_154554.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154700.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154748.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154802.jpg,1,0,truck_tyre,,too close: line blurred and thick
+photo_20261030_154813.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154820.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154854.jpg,1,1,truck_tyre,groove,laser across ribs and a groove
+photo_20261030_154909.jpg,1,0,truck_tyre,,too close: line blurred and thick
+photo_20261030_154921.jpg,1,0,truck_tyre,,too close: line blurred and thick
+photo_20261030_154937.jpg,1,0,truck_tyre,,too close: line blurred and thick
+photo_20261030_155008.jpg,1,0,truck_tyre,,too close: line blurred and thick
+photo_20261030_160117.jpg,1,1,truck_tyre,groove,laser across ribs and a groove

@@ -1,0 +1,73 @@
+{
+  "photos": 86,
+  "accepted": 12,
+  "scenes": {
+    "rover_tyre / lug": {
+      "frames": [
+        "photo_20261028_162036.jpg",
+        "photo_20261028_162050.jpg",
+        "photo_20261028_162117.jpg",
+        "photo_20261028_162148.jpg",
+        "photo_20261028_162156.jpg",
+        "photo_20261028_162241.jpg"
+      ],
+      "mode": "steps",
+      "depth_px_median": 13.1,
+      "depth_px_iqr": [
+        8.4,
+        15.4
+      ],
+      "depth_mm_nominal_median": 7.2,
+      "depth_mm_range_at_median": [
+        4.3,
+        11.1
+      ]
+    },
+    "truck_tyre / cut": {
+      "frames": [
+        "photo_20261030_154446.jpg"
+      ],
+      "mode": "groove",
+      "depth_px_median": 10.6,
+      "depth_px_iqr": [
+        10.6,
+        10.6
+      ],
+      "depth_mm_nominal_median": 5.8,
+      "depth_mm_range_at_median": [
+        3.5,
+        8.8
+      ]
+    },
+    "truck_tyre / groove": {
+      "frames": [
+        "photo_20261030_154510.jpg",
+        "photo_20261030_154554.jpg",
+        "photo_20261030_154820.jpg",
+        "photo_20261030_154854.jpg",
+        "photo_20261030_160117.jpg"
+      ],
+      "mode": "groove",
+      "depth_px_median": 36.4,
+      "depth_px_iqr": [
+        33.9,
+        48.1
+      ],
+      "depth_mm_nominal_median": 23.6,
+      "depth_mm_range_at_median": [
+        13.5,
+        37.5
+      ]
+    }
+  },
+  "note": "mm values use the uncalibrated design geometry; see README",
+  "classifier_on_training_photos": {
+    "accuracy": 0.9186046511627907,
+    "precision": 0.75,
+    "recall": 0.9473684210526315,
+    "tp": 18,
+    "fp": 6,
+    "fn": 1,
+    "tn": 61
+  }
+}
