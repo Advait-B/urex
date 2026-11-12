@@ -75,14 +75,14 @@ def figs():
     # the stress frames where the baseline line F1 is worst: glints, paint, dim laser
     f1b = [run.line_scores(*(lambda q: (q["u"], q["v"]))(baseline_steger.extract_line(it["on"])), it["truth"]["u"], it["truth"]["v"], 1.0)["f1"] for it in st]
     order = np.argsort(f1b)[:8]
-    fig, axs = plt.subplots(2, 4, figsize=(13, 5.2))
+    fig, axs = plt.subplots(2, 4, figsize=(13, 5.8))
     for ax, i in zip(axs.ravel(), order):
         q = cnn_line.extract_line(st[i]["on"])
         f1c = run.line_scores(q["u"], q["v"], st[i]["truth"]["u"], st[i]["truth"]["v"], 1.0)["f1"]
         panel(ax, st[i]["on"], f"stress #{i}: line F1 baseline {f1b[i]:.2f} -> CNN {f1c:.2f}")
-    axs[0, 0].legend(fontsize=6, loc="lower left", markerscale=4)
+    axs[0, 0].legend(fontsize=6, loc="upper left", markerscale=4)
     fig.suptitle("Simulated stress frames where the baseline is worst. Orange = baseline points, magenta = CNN-gated points, blue = CNN mask outline", fontsize=9)
-    fig.tight_layout()
+    fig.tight_layout(h_pad=2.0)
     fig.savefig(f"{FIG}/sim_stress.png", dpi=130, facecolor="white")
     plt.close(fig)
 

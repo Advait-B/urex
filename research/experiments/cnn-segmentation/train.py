@@ -1,7 +1,7 @@
 """train.py - train the tiny U-Net of algos/cnn_line.py on the simulated `train` set only.
 
     cd research
-    python experiments/cnn-segmentation/train.py --out models/cnn_line.pt --aug full --iters 3000 --minutes 6.5
+    python experiments/cnn-segmentation/train.py --out models/cnn_line.pt --aug full --iters 1000 --minutes 7
     (run again with the same arguments to resume from the checkpoint until --iters is reached)
 
 Target: Gaussian heat-map exp(-d^2 / 2 sigma^2), d = distance to the TRUE sub-pixel line (sigma 1 px),

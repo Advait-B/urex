@@ -4,12 +4,12 @@ The network maps the grey image to a heat-map: ~1 on the laser line centre, fall
 Gaussian (sigma 1 px) of the distance to the true sub-pixel line. Four ways to turn that
 into sub-pixel points are implemented; READOUT picks one (the wrappers cnn_line_*.py
 only change this):
-  "steger"   baseline Steger ridge points on the IMAGE (relaxed thresholds), kept where the
-             heat-map says "laser"                                            <- default (best)
-  "heat"     soft-argmax: centroid of the heat-map across the line at each heat-map peak
-  "gated"    centroid of the heat-map-weighted image intensity at each heat-map peak
+  "gated"    centroid of heat-map-weighted image intensity across the line, at each heat-map peak  <- default
+  "heat"     soft-argmax: centroid of the heat-map itself across the line at each heat-map peak
   "column"   classic one-point-per-column soft-argmax of the heat-map
-Weights: research/models/cnn_line.pt (float32 state dict, loaded lazily).
+  "steger"   the baseline's Steger ridge points on the IMAGE (relaxed thresholds), kept where the mask is on
+Weights (float32 state dicts, loaded lazily): research/models/cnn_line.pt (trained with the sim-to-real
+augmentation) and cnn_line_noaug.pt (crop + flip only; better on simulation, used by cnn_line_noaug.py).
 Training: research/experiments/cnn-segmentation/train.py
 """
 import os
@@ -26,10 +26,13 @@ import single_frame as sf  # noqa: E402
 
 NAME = "cnn_line"
 USES_OFF = False
-READOUT = "steger"
+READOUT = "gated"
 WEIGHTS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models", "cnn_line.pt")
 THR = 0.35            # heat-map level that counts as "laser"
 MIN_BLOB = 12         # px: smaller heat-map blobs are dropped
+GUIDE_PX = 10        # px: a separate piece this close to the main line's straight guide is kept
+TOUCH_PX = 12        # px: ... or one that comes this close to a kept piece
+GAP_PX = 60          # px: ... or a piece in a column gap of the line, at most this far from the guide
 MIN_POINTS = 40       # fewer points than this in a frame -> report no line at all
 
 torch.set_num_threads(1)
@@ -91,15 +94,41 @@ def heatmap(gray, path=None):
     return p.numpy()
 
 
-def clean_mask(p, thr=None, min_blob=None):
-    """Heat-map -> boolean laser mask without the small isolated blobs."""
+def clean_mask(p, thr=None, min_blob=None, select=True):
+    """Heat-map -> boolean laser mask. Small blobs are dropped; then (select=True) only ONE line is
+    kept: the piece with the largest heat x width is the laser, and other pieces stay only if they
+    lie along the straight line through it (within GUIDE_PX), come within TOUCH_PX of a kept piece
+    (the hook inside a groove), or sit in columns where the kept line has a gap (a groove floor: the
+    wall hides the part that would join it). The network alone marks every thin bright streak (glints)."""
     thr = THR if thr is None else thr
     min_blob = MIN_BLOB if min_blob is None else min_blob
     m = (p > thr).astype(np.uint8)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(m, connectivity=8)
-    ok = np.zeros(n, bool)
-    ok[1:] = stats[1:, cv2.CC_STAT_AREA] >= min_blob
-    return ok[lab]
+    ids = [i for i in range(1, n) if stats[i, cv2.CC_STAT_AREA] >= min_blob]
+    if not select or len(ids) <= 1:
+        ok = np.zeros(n, bool)
+        ok[ids] = True
+        return ok[lab]
+    heat = np.bincount(lab.ravel(), weights=p.ravel(), minlength=n)
+    best = max(ids, key=lambda i: heat[i] * stats[i, cv2.CC_STAT_WIDTH])
+    vv, uu = np.nonzero(lab == best)
+    a, b = np.polyfit(uu, vv, 1) if np.ptp(uu) > 5 else (0.0, float(np.median(vv)))
+    keep = lab == best
+    todo = [i for i in ids if i != best]
+    added = True
+    while added and todo:
+        added = False
+        dist = cv2.distanceTransform((~keep).astype(np.uint8), cv2.DIST_L2, 3)
+        for i in list(todo):
+            sel = lab == i
+            vi, ui = np.nonzero(sel)
+            off = np.median(np.abs(vi - (a * ui + b)))
+            in_gap = off < GAP_PX and np.mean(keep.any(axis=0)[ui]) < 0.3
+            if off < GUIDE_PX or dist[sel].min() <= TOUCH_PX or in_gap:
+                keep |= sel
+                todo.remove(i)
+                added = True
+    return keep
 
 
 # ------------------------------------------------------------ heat-map -> sub-pixel points
@@ -142,7 +171,7 @@ def points_from_heat(p, gray=None, mask=None, columns_only=False):
     return np.r_[u, u2], np.r_[v, v2]
 
 
-def points_steger_gated(gray, mask, grow=1):
+def points_steger_gated(gray, mask, grow=0):
     """The baseline's Steger ridge points, relaxed thresholds, no chain selection: the CNN mask
     decides which of them are laser."""
     g = np.ascontiguousarray(gray.T)
