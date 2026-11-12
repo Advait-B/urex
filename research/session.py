@@ -75,6 +75,15 @@ def measure(path):
     return row
 
 
+def find_port():
+    """The Nucleo's ST-LINK serial port: COMx on Windows, /dev/tty.usbmodem* on macOS, /dev/ttyACM* on Linux."""
+    from serial.tools import list_ports
+    ports = list(list_ports.comports())
+    stlink = [p.device for p in ports if p.vid == 0x0483 or "STLink" in (p.description or "") or "STMicro" in (p.description or "")]
+    other = [p.device for p in ports if "usbmodem" in p.device or "ttyACM" in p.device]
+    return next(iter(stlink + other), None)
+
+
 def write_tables(rows, folder):
     with open(os.path.join(folder, "results.csv"), "w", newline="") as fh:
         w = csv.DictWriter(fh, COLS, extrasaction="ignore")
@@ -92,7 +101,7 @@ def write_tables(rows, folder):
     note = ("approx_mm = design geometry at 90 mm stand-off, NOT calibrated. mm_range = the same reading at 70-110 mm. "
             "Several values in one cell = several grooves, left to right.")
     text = "\n".join([f"# UREX session {os.path.basename(folder)}", "", *table, "", *summary, "", note, ""])
-    with open(os.path.join(folder, "results.md"), "w") as fh:
+    with open(os.path.join(folder, "results.md"), "w", encoding="utf-8") as fh:
         fh.write(text)
     return text
 
@@ -112,7 +121,7 @@ def main():
 
     cam = None
     if not args.folder:
-        port = args.port or next(iter(sorted(glob.glob("/dev/tty.usbmodem*") + glob.glob("/dev/ttyACM*"))), None)
+        port = args.port or find_port()
         if port is None:
             sys.exit("No Nucleo found. Plug in the ST-LINK USB cable, or pass --port, or use --folder.")
         cam = subprocess.Popen([sys.executable, "get_photo.py", port, "--out", photos], cwd=PC_DIR)
