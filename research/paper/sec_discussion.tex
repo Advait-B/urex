@@ -1,0 +1,116 @@
+\section{Discussion}\label{sec:discussion}
+
+\paragraph{Where the error came from.} Before this study we assumed the weak point was sub-pixel accuracy. It is
+not. On clean frames every method is within 0.03--0.15\,mm. The baseline's large stress errors come from three
+specific faults, each with a specific classical fix: (i) no notion of ``one line'' (fixed by DP tracking), (ii) a
+depth stage that fits in image columns and lets one stray point set the floor (fixed by fitting in millimetres and
+clustering the floor), and (iii) no ability to say ``retake'' (fixed by the gate).
+
+\paragraph{Classical or learned?} Table~\ref{tab:verdicts} summarises each family. The pattern is consistent:
+learned methods looked best on the simulated sets that resemble their training data and lost most when the
+pictures changed (another unit, a hand-held photo). The classical methods moved least. Learning earned its place in
+one role: the small logistic-regression gates, where the question is fuzzy (``does this look like a usable photo?'')
+and a wrong answer costs a retake rather than a wrong measurement.
+
+\begin{table}[H]
+\centering\small
+\caption{Summary verdict per family.}\label{tab:verdicts}
+\begin{tabularx}{\linewidth}{@{}lllX@{}}
+\toprule
+Family & Simulation & Real photos & Verdict \\
+\midrule
+DP line tracking & strong & agrees ($\approx$1\,px) & \textbf{Adopt} as the line extractor. \\
+Robust depth stage & strong & consistent on the repeat pair & \textbf{Adopt}. Confirm against a gauge. \\
+Quality gate & strong & 0.24 false-accept, cross-validated & \textbf{Adopt}; retrain as labelled sessions grow. \\
+Calibration (physical model) & strong & not testable yet & \textbf{Adopt} the eight-height recipe and zero check. \\
+Laser on/off & best of all & needs hardware & \textbf{Hardware request}: laser on a GPIO. \\
+Per-column peaks & accurate, fragile & mixed & Keep as the fast option if the MCU budget is tight. \\
+U-Net line & strong & agrees ($\approx$1\,px) & Park until real holder images exist. \\
+Candidate classifier & strong & fails & Do not use: learned a simulator shortcut. \\
+End-to-end CNN & good in-domain & fails & Do not use as the measurement. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{Computing cost.} On one laptop-class core the recommended stack without the frame gate takes about
+35--40\,ms per frame, against about 26\,ms for the baseline; the frame gate's features roughly double that and are
+the first thing to optimise. Timings on the shared test machine varied by $\pm30\,\%$ between runs, so treat them as
+rough. Nothing in stages 1--3 needs more than NumPy-style array operations, so a port to the STM32H7 or to the
+cloud back-end is realistic; the U-Net is not realistic on the microcontroller.
+
+\input{sec_audit}
+
+\section{Threats to validity}\label{sec:validity}
+
+We list these plainly because they decide how far the numbers above can be trusted.
+
+\begin{enumerate}
+\item \textbf{Most numbers come from a simulator.} It models geometry, blur, noise, glints and dirt, but its line is
+      thinner than the real one, always sits at the same height in the frame in the standard sets, and its tread
+      crown is an exact parabola. Two learned methods exploited such regularities. The \texttt{handheld} and
+      \texttt{shifted} sets were added to expose this, but they are still simulations.
+\item \textbf{The simulator shares assumptions with some methods.} Its camera is exactly the physical calibration
+      model, and its crown is exactly what the robust depth stage fits. Gains in those two places are upper bounds.
+\item \textbf{The real photos were not taken with the holder.} They are hand-held, the laser was not fixed to the
+      camera, and no groove was measured with a gauge. Their depths are meaningful only in pixels, and the six
+      reference depths come from the baseline itself. Six frames cannot rank methods that differ by a pixel.
+\item \textbf{Small numbers.} 19 usable photos, 12 with an unusable laser. One photo is 5--8 percentage points.
+\item \textbf{In-sample gate numbers.} The frame gate was trained on the same 86 photos; we quote cross-validated
+      figures wherever we draw a conclusion. All 19 usable photos come from two sessions, so even those are a
+      feasibility result rather than a performance estimate.
+\item \textbf{Tuning.} All thresholds were tuned on \texttt{train}. Two choices in the combined stack were made
+      after test numbers had been seen (the pixel cap, and the 3\,\% risk target); neither changes a conclusion.
+\item \textbf{Scorer limits.} There is no ``at least $x$\,mm'' outcome and no guard band at 1.6\,mm, so a 0.02\,mm
+      slip across the limit counts the same as a gross unsafe PASS; verdict accuracy is also inflated by the fact
+      that most simulated tyres are legal.
+\end{enumerate}
+
+\section{Recommendations and next steps}
+
+\paragraph{Software (ready now).}
+\begin{enumerate}
+\item Replace the Steger line extractor with \algo{dp\_dense} and the depth stage with \algo{rd\_final}; add the
+      gates. This is \algo{stack\_dp\_rd\_gate} on branch \texttt{research/best-stack}.
+\item Report three outcomes, not two: PASS, FAIL, and \emph{retake}. Add a guard band around 1.6\,mm.
+\item Switch calibration to the physical model with eight plate heights from $+4$ to $-18$\,mm, and add a
+      one-photo zero check at the start of a shift.
+\end{enumerate}
+
+\paragraph{Hardware (one request).} Let the microcontroller switch the laser, and capture an off frame within a
+few milliseconds of the on frame. In simulation this is worth more than any other single change.
+
+\paragraph{Data (the real gap).} Everything above should be confirmed on images from the printed holder:
+\begin{enumerate}
+\item With the holder, photograph 5--10 tyres, three presses per groove, and measure each groove with the manual
+      gauge. Fifty gauge readings would turn every ``agreement'' number in this report into an accuracy number.
+\item Photograph a machined step block (for example 2, 5 and 10\,mm steps) to check the calibration end to end.
+\item Keep labelling ``usable / not usable'' on every session; the gate improves with sessions, not with model size.
+\end{enumerate}
+
+\section{Conclusion}
+
+Ten algorithm families were implemented on separate branches and scored on the same simulated and real data.
+The most effective changes were not the most sophisticated ones: a dynamic-programming line tracker, a depth stage
+that works in millimetres and takes the groove floor from a cluster, and a small gate that can refuse a photo.
+In simulation, together they cut the mean depth error under bad conditions from 1.5\,mm to 0.25\,mm, cut gross errors
+from 36\,\% to under 3\,\%, passed none of 41 illegal tyres where the baseline passed 9, and stopped the device from reporting
+depths on photos with no laser, while still answering about nine presses in ten. Neural networks that replace the
+geometry looked good in simulation and failed on real photos and on other units. The next step is not a better
+algorithm but ground truth: gauge-measured grooves photographed through the printed holder.
+
+\appendix
+\section{Reproducing the results}
+
+\begin{lstlisting}[language=bash]
+git clone https://github.com/Advait-B/urex && cd urex
+git checkout research/paper                 # everything merged: simulator, benchmark, all algorithms, this paper
+pip install numpy scipy scikit-learn scikit-image opencv-python-headless torch
+cd research
+python -m bench.run2 algos.stack_dp_rd_gate --out results2/stack_dp_rd_gate.json   # score one algorithm
+python -m bench.score_all algos.dp_dense algos.rd_final                             # re-score several
+python paper/make_tables.py && (cd paper && pdflatex main.tex)                      # rebuild tables and PDF
+\end{lstlisting}
+
+The simulated sets are generated from fixed seeds the first time they are needed (a few minutes) and cached.
+Each branch has a write-up in \texttt{research/notes/<topic>.md} with more variants, figures and negative results
+than fit here.

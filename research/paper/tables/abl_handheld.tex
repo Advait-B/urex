@@ -1,0 +1,15 @@
+\begin{tabular}{@{}lrrrrrrr@{}}
+\toprule
+Step & Cov. & Line F1 & MAE px & Median px & Gross & Miss & False \\
+\midrule
+0\quad Baseline & 1.00 & 0.385 & 8.11 & 2.81 & 0.494 & 0.466 & 0.327 \\
+1a\quad DP line only & 1.00 & 0.905 & 3.66 & 0.40 & 0.103 & 0.043 & 0.233 \\
+1b\quad Robust depth only & 1.00 & 0.385 & 7.06 & 0.61 & 0.354 & 0.515 & 0.300 \\
+2\quad DP line + robust depth & 1.00 & 0.905 & 2.91 & 0.30 & 0.077 & 0.043 & 0.220 \\
+3\quad + 25 mm cap & 1.00 & 0.905 & 2.22 & 0.30 & \textbf{0.071} & 0.049 & 0.220 \\
+4\quad + lower-bound rule & 0.95 & 0.912 & 2.22 & 0.30 & \textbf{0.071} & 0.006 & 0.231 \\
+5\quad + risk gate & 0.95 & 0.912 & 2.22 & 0.30 & \textbf{0.071} & 0.006 & 0.231 \\
+6\quad + frame gate \textbf{(recommended)} & 0.42 & \textbf{0.935} & 2.05 & \textbf{0.29} & 0.104 & \textbf{0.000} & \textbf{0.127} \\
+7\quad Row 2 with on/off line & 0.95 & 0.746 & \textbf{1.36} & 0.54 & 0.090 & \textbf{0.000} & 0.909 \\
+\bottomrule
+\end{tabular}

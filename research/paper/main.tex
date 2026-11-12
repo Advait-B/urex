@@ -1,0 +1,36 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{mathpazo}
+\usepackage[margin=22mm,top=22mm,bottom=24mm]{geometry}
+\usepackage{microtype,booktabs,graphicx,xcolor,amsmath,float,caption,subcaption,tabularx,enumitem,listings,tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage[colorlinks=true,linkcolor=accent,urlcolor=accent,citecolor=accent]{hyperref}
+\definecolor{accent}{HTML}{1F5FA8}
+\definecolor{codebg}{HTML}{F5F6F8}
+\definecolor{boxbg}{HTML}{EEF4FB}
+\definecolor{warnbg}{HTML}{FDF3E4}
+\captionsetup{font=small,labelfont=bf,skip=6pt}
+\setlist{itemsep=1pt,topsep=3pt,leftmargin=1.4em}
+\setlength{\parskip}{4pt}\setlength{\parindent}{0pt}
+\lstset{language=Python,basicstyle=\ttfamily\scriptsize,backgroundcolor=\color{codebg},frame=single,rulecolor=\color{codebg},
+  keywordstyle=\color{accent}\bfseries,commentstyle=\color{black!55},showstringspaces=false,columns=fullflexible,keepspaces=true,
+  xleftmargin=2pt,xrightmargin=2pt,aboveskip=6pt,belowskip=4pt,breaklines=true,captionpos=b}
+\newcommand{\takeaway}[1]{\par\smallskip\noindent\colorbox{boxbg}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small\textbf{Takeaway.} #1}}\par\smallskip}
+\newcommand{\caution}[1]{\par\smallskip\noindent\colorbox{warnbg}{\parbox{\dimexpr\linewidth-2\fboxsep}{\small\textbf{Caution.} #1}}\par\smallskip}
+\newcommand{\algo}[1]{\texttt{#1}}
+\newcommand{\figs}{../notes/figs}
+
+\title{\vspace{-8mm}\textbf{Making the UREX Tread-Depth Software Robust:\\ A Benchmark Study of Ten Algorithm Families\\ on Simulated and Real Laser-Line Images}}
+\author{UREX project team \\ \small Technical report \,\textperiodcentered\, 12 November 2026 \,\textperiodcentered\, code: \texttt{github.com/Advait-B/urex}, branches \texttt{research/*}}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-6mm}
+\input{sec_abstract}
+\input{sec_intro_method}
+\input{sec_algorithms}
+\input{sec_stack}
+\input{sec_discussion}
+\end{document}

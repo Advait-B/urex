@@ -1,0 +1,297 @@
+<title>UREX Laser Photo Analysis</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600;700&display=swap">
+<style>
+/* Layout: one reading column (lab report), figures break out wider; data in mono. */
+:root {
+  --bg: #f6f7f6;           /* paper with a faint green bias */
+  --surface: #ffffff;
+  --fg: #1c2421;           /* graphite, tyre-rubber dark */
+  --muted: #5b6662;
+  --rule: #d9dedb;
+  --laser: #1f8a3c;        /* the 520 nm line, darkened for text contrast */
+  --laser-soft: #e3f2e6;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --bad: #a23a2c;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121615; --surface: #1a201e; --fg: #e4e9e6; --muted: #9aa6a1; --rule: #2c3431;
+    --laser: #5fd17a; --laser-soft: #183322; --warn: #e3a64a; --warn-soft: #2e2414; --bad: #ef8a7a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121615; --surface: #1a201e; --fg: #e4e9e6; --muted: #9aa6a1; --rule: #2c3431;
+  --laser: #5fd17a; --laser-soft: #183322; --warn: #e3a64a; --warn-soft: #2e2414; --bad: #ef8a7a;
+  color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg);
+  font: 400 16px/1.6 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 72px;
+}
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+.col { max-width: 680px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; font-weight: 700; }
+h3 { font-size: 1.15rem; font-weight: 600; }
+p { margin: 0; }
+section { display: grid; gap: 18px; min-width: 0; }
+.eyebrow { font: 500 0.78rem/1 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--laser); }
+.lede { font-size: 1.12rem; color: var(--muted); max-width: 640px; }
+.mono, td.num, .val { font-family: var(--font-data); font-variant-numeric: tabular-nums; }
+a { color: var(--laser); }
+a:focus-visible { outline: 2px solid var(--laser); outline-offset: 2px; }
+
+/* header */
+header { display: grid; gap: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 20px; font: 400 0.85rem/1.4 var(--font-data); color: var(--muted); }
+
+/* key numbers: three facts the page is about */
+.keys { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.key { background: var(--surface); padding: 18px 20px; display: grid; gap: 6px; align-content: start; }
+.key .val { font-size: 2rem; font-weight: 500; line-height: 1; }
+.key .val small { font-size: 0.95rem; color: var(--muted); font-weight: 400; }
+.key p { font-size: 0.9rem; color: var(--muted); }
+
+/* the one caution that matters */
+.caution { border-left: 4px solid var(--warn); background: var(--warn-soft); padding: 16px 20px; display: grid; gap: 8px; max-width: 760px; }
+.caution strong { color: var(--warn); }
+
+/* tables */
+.tbl { overflow-x: auto; border: 1px solid var(--rule); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font: 500 0.75rem/1.2 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+td.num, th.num { text-align: right; }
+tr:last-child td { border-bottom: 0; }
+tr.group td { background: var(--bg); font: 600 0.82rem/1.2 var(--font-data); color: var(--muted); letter-spacing: 0.04em; }
+.chip { display: inline-block; font: 500 0.72rem/1 var(--font-data); padding: 4px 7px; border-radius: 3px; letter-spacing: 0.04em; }
+.chip.groove { background: var(--laser-soft); color: var(--laser); }
+.chip.lug { background: var(--warn-soft); color: var(--warn); }
+.chip.cut { background: var(--bg); color: var(--muted); border: 1px solid var(--rule); }
+.bar { position: relative; height: 8px; min-width: 120px; background: var(--bg); border-radius: 4px; }
+.bar i { position: absolute; top: 0; bottom: 0; background: var(--laser); opacity: 0.35; border-radius: 4px; }
+.bar b { position: absolute; top: -3px; width: 3px; height: 14px; background: var(--laser); border-radius: 1px; }
+.bar u { position: absolute; top: -4px; bottom: -4px; background: var(--warn); opacity: 0.35; width: 2px; }
+
+/* figures: matplotlib PNGs are drawn on white, so they sit on a white plate in both themes */
+figure { margin: 0; display: grid; gap: 10px; min-width: 0; }
+figure .plate { background: #ffffff; border: 1px solid var(--rule); padding: 6px; overflow-x: auto; }
+figure img { display: block; width: 100%; height: auto; min-width: 640px; max-width: none; }
+figure.narrow img { min-width: 0; max-width: 100%; }
+figcaption { font-size: 0.9rem; color: var(--muted); max-width: 760px; }
+figcaption b { color: var(--fg); font-weight: 600; }
+.figs { display: grid; gap: 34px; }
+.tag { font: 500 0.75rem/1 var(--font-data); padding: 3px 6px; border-radius: 3px; margin-right: 6px; }
+.tag.ok { background: var(--laser-soft); color: var(--laser); }
+.tag.no { background: var(--warn-soft); color: var(--bad); }
+
+/* panels legend */
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.panels div { border-top: 2px solid var(--rule); padding-top: 8px; font-size: 0.88rem; color: var(--muted); }
+.panels div b { display: block; color: var(--fg); font-family: var(--font-display); font-size: 1rem; }
+
+/* pipeline steps: a real sequence, so it is numbered */
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: s; border: 1px solid var(--rule); background: var(--surface); }
+ol.steps li { counter-increment: s; display: grid; grid-template-columns: 3rem 1fr; gap: 4px 12px; padding: 12px 16px; border-bottom: 1px solid var(--rule); }
+ol.steps li:last-child { border-bottom: 0; }
+ol.steps li::before { content: counter(s); font: 500 1.1rem/1.3 var(--font-data); color: var(--laser); grid-row: span 2; }
+ol.steps li b { font-weight: 600; }
+ol.steps li span { color: var(--muted); font-size: 0.92rem; min-width: 0; }
+
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 8px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px 40px; align-items: start; }
+.two > * { min-width: 0; }
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--rule); padding-top: 18px; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">UREX · CMOS branch · 12 Nov 2026</span>
+  <h1>Tread depth from 86 laser photos</h1>
+  <p class="lede">The photos from 8–30 Oct went through new signal processing and a small machine-learning model that picks out usable shots. The pixel measurements are solid and repeatable. The millimetre values are still estimates, because the laser wasn't fixed to the camera when these were taken.</p>
+  <div class="meta"><span>86 photos · 320 × 240 greyscale</span><span>truck tyre (30 Oct) · rover tyre (28 Oct)</span><span>code: <a href="https://github.com/Advait-B/urex/pull/2" target="_blank" rel="noopener">PR #2, pipeline/</a></span></div>
+</header>
+
+<section>
+  <div class="keys">
+    <div class="key"><span class="eyebrow">Measured</span><span class="val">12<small> / 86 photos</small></span><p>passed the ML gate and the measurement checks</p></div>
+    <div class="key"><span class="eyebrow">Truck-tyre groove</span><span class="val">36.4<small> px median</small></span><p>5 photos, 28.9–51.4 px. Same groove twice: 33.9 and 36.4 px.</p></div>
+    <div class="key"><span class="eyebrow">Rover lug step</span><span class="val">13.1<small> px median</small></span><p>6 photos, 6.6–19.5 px</p></div>
+    <div class="key"><span class="eyebrow">Usable-photo model</span><span class="val">94<small> % on an unseen day</small></span><p>finds 18 of 19 usable photos; the old hand rule found 10</p></div>
+  </div>
+  <div class="caution">
+    <p><strong>Read the mm with care.</strong> Converted with the design geometry (laser 63 mm from the lens at 35°, 2.8 mm lens, 90 mm away), the groove comes out at about <span class="mono">24 mm</span>. A new truck or bus tyre has only <span class="mono">14–15.5 mm</span> of tread. Two frames also contradict a fixed laser: the further-away shots show bigger shifts, not smaller ones. The laser was most likely hand-held at varying angles, so the px → mm scale changed from shot to shot.</p>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Results</span>
+  <h2>Every accepted photo</h2>
+  <p class="col">The pixel shift is the measurement. The mm column is the design-geometry estimate at 90 mm; the bar shows the range if the device was anywhere from 70 to 110 mm away. The amber tick marks 15.5 mm, a new tyre's full tread.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>photo</th><th>feature</th><th class="num">shift (px)</th><th class="num">≈ mm @ 90</th><th class="num">range (mm)</th><th>0 ─ 60 mm</th><th class="num">P(usable)</th></tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Raw vs cleaned</span>
+  <h2>What the processing does to each photo</h2>
+  <div class="panels">
+    <div><b>Photo</b>as the camera saved it</div>
+    <div><b>Raw</b>brightest pixel in every row: what a naive script measures. It catches glare, background edges and the wrong branch of the line.</div>
+    <div><b>Cleaned</b>sub-pixel laser points the pipeline keeps, coloured by distance from the fitted surface (green dashes). Circle = groove bottom.</div>
+    <div><b>Profile</b>offset from the surface along the line, in px (left axis) and nominal mm (right axis)</div>
+  </div>
+  <div class="figs">
+    <figure>
+      <div class="plate"><img src="img/photo_20261030_154820.png" alt="Truck tyre photo 154820: raw brightest-pixel trace vs cleaned laser points and the groove profile, apex 33.9 px"></div>
+      <figcaption><span class="tag ok">accepted</span><b>154820, truck-tyre groove, 33.9 px.</b> The line runs down the sloped wall, rounds the bottom and comes back. The far wall is partly hidden from the camera. The raw trace lands on the laser in 89 % of rows here; the cleaned points sit within 0.5 px of the surface fit.</figcaption>
+    </figure>
+    <figure>
+      <div class="plate"><img src="img/photo_20261030_154854.png" alt="Truck tyre photo 154854: groove apex 36.4 px"></div>
+      <figcaption><span class="tag ok">accepted</span><b>154854, the same groove a few seconds later, 36.4 px.</b> The bottom of the "hook" is a separate piece of line (a 12.8 px gap where the wall hides it). The pipeline links pieces up to 16 px apart so it isn't dropped.</figcaption>
+    </figure>
+    <figure>
+      <div class="plate"><img src="img/photo_20261030_154510.png" alt="Truck tyre photo 154510: groove apex 51.4 px"></div>
+      <figcaption><span class="tag ok">accepted</span><b>154510, 51.4 px.</b> The same tyre, but a much bigger shift. The surface line sits further left, which under the fixed-laser model means further away and should give a <i>smaller</i> shift. This is the main evidence that the laser angle changed between shots.</figcaption>
+    </figure>
+    <figure>
+      <div class="plate"><img src="img/photo_20261028_162117.png" alt="Rover tyre photo 162117: raw trace hits the white background; cleaned points follow the laser; two lug steps of about 15 px"></div>
+      <figcaption><span class="tag ok">accepted</span><b>162117, rover lugs, 15.5 px.</b> The raw trace lands on the laser in only 5 % of rows; it is mostly the bright wall behind. On a lugged tyre the line is a staircase, so each step is measured locally (yellow bars) instead of against one surface.</figcaption>
+    </figure>
+    <figure>
+      <div class="plate"><img src="img/photo_20261030_154446.png" alt="Truck tyre photo 154446: line crosses a narrow cut, 10.6 px"></div>
+      <figcaption><span class="tag ok">accepted</span><b>154446, a narrow cut, 10.6 px.</b> A real feature, but not a groove, so it is kept out of the groove figure.</figcaption>
+    </figure>
+    <figure>
+      <div class="plate"><img src="img/photo_20261030_154813.png" alt="Truck tyre photo 154813: rejected, the line runs along a groove edge and the surface fit agrees with only 35 percent of points"></div>
+      <figcaption><span class="tag no">rejected</span><b>154813.</b> The model rates it usable (0.94), but the measurement check refuses it. The line runs along the groove edge for most of its length, so only 35 % of points agree on a surface and the 92 px "apex" is meaningless. The other usable-looking photos refused this way: 154337 (line also jogs 31 px <i>towards</i> the camera at a block edge), 154403, 154700, 154748, 162216.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">All measurements</span>
+  <h2>Repeatability and spread</h2>
+  <div class="two">
+    <figure class="narrow">
+      <div class="plate"><img src="img/profiles.png" alt="Cleaned groove profiles of the truck-tyre photos aligned at the apex"></div>
+      <figcaption><b>Groove profiles lined up at the bottom.</b> 154820 and 154854 trace almost the same shape, 2.5 px apart. 154510 and 154554 are deeper and wider in px, consistent with a steeper laser angle on those shots.</figcaption>
+    </figure>
+    <figure class="narrow">
+      <div class="plate"><img src="img/overview.png" alt="Measured shift in px per photo, and design-geometry mm with a 70 to 110 mm range"></div>
+      <figcaption><b>Left: the measurement in px. Right: the mm estimate.</b> The green band is a new truck/bus tyre's tread (14–15.5 mm). Several groove estimates sit well above it.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Machine learning</span>
+  <h2>Which photos are worth measuring?</h2>
+  <div class="two">
+    <div style="display:grid; gap:14px">
+      <p>Most photos a hand-held device takes are unusable: no laser, too close and blurred, reflections, the line off the tyre. A logistic regression learns that decision from 12 numbers per photo: how much of the frame the line covers, how strong, bright, thick and saturated it is, how well it fits one surface, image sharpness, and background brightness.</p>
+      <p>I labelled all 86 photos by eye (19 usable) and tested two ways. <b>Leave-one-out:</b> train on 85, test the 86th, repeat. <b>Leave-one-day-out:</b> train on three days, test on the fourth, which is the realistic case of a new day, new light, new tyre.</p>
+      <p>The model's false alarms are wide rover shots with short laser arcs. The measurement checks that follow reject all of them. The regularisation strength was tuned on the held-out-day score, so treat 94 % as slightly optimistic. Retrain as more labelled photos come in.</p>
+    </div>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>model</th><th class="num">acc</th><th class="num">prec</th><th class="num">recall</th></tr></thead>
+        <tbody>
+          <tr class="group"><td colspan="4">leave-one-day-out</td></tr>
+          <tr><td>hand rule</td><td class="num">0.90</td><td class="num">1.00</td><td class="num">0.53</td></tr>
+          <tr><td><b>logistic regression</b></td><td class="num"><b>0.94</b></td><td class="num"><b>0.82</b></td><td class="num"><b>0.95</b></td></tr>
+          <tr><td>random forest</td><td class="num">0.86</td><td class="num">0.63</td><td class="num">0.89</td></tr>
+          <tr class="group"><td colspan="4">leave-one-out</td></tr>
+          <tr><td>hand rule</td><td class="num">0.90</td><td class="num">1.00</td><td class="num">0.53</td></tr>
+          <tr><td>logistic regression</td><td class="num">0.92</td><td class="num">0.75</td><td class="num">0.95</td></tr>
+          <tr><td>random forest</td><td class="num">0.94</td><td class="num">0.89</td><td class="num">0.84</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Method</span>
+  <h2>The pipeline, in order</h2>
+  <ol class="steps">
+    <li><b>Top-hat filter</b><span>subtracts anything wider than 15 px, which stands in for the laser-off frame these photos don't have</span></li>
+    <li><b>Steger ridge points</b><span>second derivatives of the blurred image locate the centre of every thin bright line to ~0.1 px, in any direction, including the sideways run inside a groove</span></li>
+    <li><b>Laser chain</b><span>keep the strongest long piece, plus bright pieces along it or within 16 px of it; drop background edges</span></li>
+    <li><b>Surface fit</b><span>RANSAC with a gently curved line (the tyre crown bends it by ~5 px)</span></li>
+    <li><b>Groove bottom</b><span>furthest excursion from the surface, anchored on its 3rd-furthest point so one or two stray points can't set the depth; for lugs, the step at each jump</span></li>
+    <li><b>ML gate</b><span>P(usable) ≥ 0.5 from the logistic regression</span></li>
+    <li><b>Measurement checks</b><span>surface agrees with ≥ 50 % of points; no big jog towards the camera; apex under 80 px</span></li>
+    <li><b>px → mm</b><span>design triangulation geometry until the shim calibration exists</span></li>
+  </ol>
+  <p class="col mono" style="font-size:0.88rem; color:var(--muted)">Synthetic test: grooves of 4–15 mm with sloped walls are measured within 0.8 px or 3 %; flat and no-laser photos return no groove.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Next</span>
+  <h2>Getting real millimetres</h2>
+  <ul class="plain col">
+    <li><b>Fix the laser to the camera</b> in the housing, with the feet setting a constant distance. The scale only means something if the angle and distance stay the same.</li>
+    <li><b>Run the shim calibration</b> (<span class="mono">take_photo.sh --shim</span>, then <span class="mono">calibrate.py</span>). It replaces the design-geometry guess with a measured curve.</li>
+    <li><b>Photograph a groove you've measured with a tread gauge</b>, 3 spots × 3 presses. That gives the first true error in mm.</li>
+    <li><b>Use laser-off / laser-on pairs</b> (already in the firmware). They remove the background properly and would let the model see more marginal shots.</li>
+  </ul>
+</section>
+
+<footer>
+  <span>Figures and numbers: <span class="mono">pipeline/results/2026-11-12/</span> in the repo (results.csv has every photo). Re-run with <span class="mono">python analyse_photos.py data/photos --out results/mine</span>.</span>
+  <span>New-tyre tread depth (14–15.5 mm): Laufenn LF22 regional truck/bus tyre data, laufenn.com.</span>
+</footer>
+</div>
+
+<script>
+// accepted photos from results.csv (12 Nov run)
+const ROWS = [
+  ["154510","groove",51.38,37.4,20.7,61.6,0.920],
+  ["154554","groove",48.14,34.2,19.1,55.7,0.913],
+  ["154854","groove",36.40,23.6,13.5,37.5,0.948],
+  ["154820","groove",33.94,21.7,12.4,34.2,0.935],
+  ["160117","groove",28.87,17.8,10.3,27.8,0.837],
+  ["154446","cut",10.63,5.8,3.5,8.8,0.876],
+  ["162050","lug",19.45,11.3,6.6,17.3,0.648],
+  ["162117","lug",15.48,8.7,5.2,13.3,0.740],
+  ["162148","lug",14.98,8.4,5.0,12.9,0.729],
+  ["162241","lug",11.18,6.1,3.7,9.3,0.720],
+  ["162156","lug",7.52,4.0,2.4,6.1,0.630],
+  ["162036","lug",6.63,3.5,2.1,5.3,0.651],
+];
+const MAX = 60, NEW_TYRE = 15.5;
+const tb = document.getElementById("rows");
+let last = "";
+for (const [id, feat, px, mm, lo, hi, p] of ROWS) {
+  const grp = feat === "lug" ? "rover tyre · 28 Oct" : "truck tyre · 30 Oct";
+  if (grp !== last) { tb.insertAdjacentHTML("beforeend", `<tr class="group"><td colspan="7">${grp}</td></tr>`); last = grp; }
+  const pct = v => Math.min(100, v / MAX * 100).toFixed(1);
+  tb.insertAdjacentHTML("beforeend", `<tr>
+    <td class="mono">${id}</td>
+    <td><span class="chip ${feat}">${feat}</span></td>
+    <td class="num">${px.toFixed(1)}</td>
+    <td class="num">${mm.toFixed(1)}</td>
+    <td class="num">${lo.toFixed(1)}–${hi.toFixed(1)}</td>
+    <td><div class="bar" aria-label="${lo} to ${hi} mm"><i style="left:${pct(lo)}%;width:${(pct(hi)-pct(lo)).toFixed(1)}%"></i><b style="left:calc(${pct(mm)}% - 1px)"></b><u style="left:${pct(NEW_TYRE)}%"></u></div></td>
+    <td class="num">${p.toFixed(2)}</td></tr>`);
+}
+</script>

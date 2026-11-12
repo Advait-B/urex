@@ -20,14 +20,84 @@ the maths that turns that pair into "groove 2 is 2.5 mm deep → PASS".
 | `test_pipeline.py` | Calibrates on fake shims, then 14 fake tyres (new 16 mm, worn 0.8 mm, crooked, blurry…). All pass. | laptop |
 | `calib.json` | Settings + calibration. Until you run `calibrate.py` it has only the design-sheet guess. | both |
 | `openmv_profile.py` | ulab port of steps 2-4 for the camera (PROFILE command). Not yet run on hardware. | OpenMV |
+| **`single_frame.py`** | **Single photo (no laser-off frame), line top-to-bottom: Steger sub-pixel line, RANSAC surface, groove apex / lug steps, px → mm.** | laptop |
+| **`frame_classifier.py`** | **ML: P(photo is usable) by logistic regression, trained on `data/photo_labels.csv`, tested leave-one-out and leave-one-day-out.** | laptop |
+| **`analyse_photos.py`** | **Runs both over a folder: `results.csv`, raw-vs-cleaned figure per photo, overview + profile plots.** | laptop |
+| `report_figs.py` | The figures. | laptop |
+| `test_single_frame.py` | Synthetic single photos with known shifts (4–15 mm grooves, blur, no groove, no laser). All pass. | laptop |
+| `data/` | `photo_labels.csv` (86 hand-labelled photos), `frame_model.json` (the trained model). | — |
 
-Setup on the laptop (one time): `bash ../setup_mac.sh` (installs numpy, opencv, matplotlib, pyserial).
+Setup on the laptop (one time): `bash ../setup_mac.sh` (installs numpy, scipy, scikit-learn, opencv, matplotlib, pyserial).
 
 ```bash
 cd pipeline
 ../.venv/bin/python test_pipeline.py              # should print ALL OK
+../.venv/bin/python test_single_frame.py          # should print ALL OK
 cd .. && bash take_photo.sh --analyse             # press B1: saves pair_..._A/B.jpg and prints the depths
 ```
+
+---
+
+## Single photos: the 28 / 30 Oct data (12 Nov 2026)
+
+```bash
+../.venv/bin/python frame_classifier.py data/photos            # retrain + cross-validate the usable-photo model
+../.venv/bin/python analyse_photos.py data/photos --out results/2026-11-12
+```
+
+Results from this run are committed in `results/2026-11-12/`: `results.csv` (every photo, every number),
+`summary.json`, `overview.png`, `profiles.png`, and `frames/` with a raw-vs-cleaned figure for each photo
+that has a laser line (photos of people are never drawn).
+
+The 86 photos (`data/photos/`, from `photos.zip`) are single frames: no laser-off partner, the laser line runs **top to bottom**,
+and inside a groove the line traces the groove's **cross-section** (down the sloped wall, round the bottom,
+back up) instead of a flat step. So they get their own pipeline:
+
+| step | what | why |
+|---|---|---|
+| 1 top-hat | subtract the local background (anything wider than 15 px) | stands in for the missing laser-off frame |
+| 2 Steger ridge points | Hessian of the blurred image → centre of every thin bright line to ~0.1 px, in any direction | the line runs sideways inside a groove; a per-row search loses it |
+| 3 keep the laser chain | strongest long piece, plus bright pieces along it or within 16 px of it | drops background edges; keeps the groove "hook" that the far wall half-hides |
+| 4 surface | RANSAC fit of a gently curved line (the tyre crown bends it ~5 px) | the surface is what most points agree on |
+| 5 groove apex | furthest excursion from the surface, anchored on its 3rd-furthest point ±0.7 px | the deepest point is the groove bottom; 1–2 stray points must not set the depth |
+| 5b lug steps | for the rover's lugged tyre: short line fits either side of each jump | no single surface on a staircase |
+| 6 ML gate | logistic regression on 12 features → P(usable) | see below |
+| 7 checks | surface fit ≥ 50 % of points; no big jog *towards* the camera; apex < 80 px | grooves only move the line away from the camera |
+
+**ML (frame_classifier.py).** 86 photos hand-labelled, 19 usable. Leave-one-out *and* leave-one-whole-day-out:
+
+| model | LOO acc / precision / recall | held-out day acc / precision / recall |
+|---|---|---|
+| hand rule (coverage, contrast, inliers) | 0.90 / 1.00 / 0.53 | 0.90 / 1.00 / 0.53 |
+| **logistic regression (C = 0.03, used)** | 0.92 / 0.75 / 0.95 | **0.94 / 0.82 / 0.95** |
+| random forest | 0.94 / 0.89 / 0.84 | 0.86 / 0.63 / 0.89 |
+
+The hand rule never cries wolf but misses half the good photos. The logistic regression finds 18 of 19, and its
+false alarms (wide rover shots with short laser arcs) are then caught by the step-7 checks. C was chosen on the
+held-out-day score itself, so that score is slightly optimistic. 86 photos is small: relabel and retrain as data
+comes in.
+
+**Results** (12 photos accepted):
+
+| feature | photos | measured shift (px) | ≈ mm, design geometry at 90 mm (range for 70–110 mm) |
+|---|---|---|---|
+| truck-tyre groove | 5 | 28.9, 33.9, 36.4, 48.1, 51.4 (median 36.4) | 23.6 (13.5–37.5) |
+| rover lug step | 6 | 6.6 – 19.5 (median 13.1) | 7.2 (4.3–11.1) |
+| narrow cut | 1 | 10.6 | 5.8 (3.5–8.8) |
+
+### How sure are the mm values? Not very, and here is why
+
+- **The pixel numbers are good.** Synthetic tests: within 0.8 px or 3 %. Two photos of the same groove
+  (154820, 154854) agree to 2.5 px.
+- **The mm numbers use the design geometry** (laser 63 mm beside the lens at 35°, 2.8 mm lens, line through
+  the image centre at 90 mm). They were never measured, and these photos say they are wrong:
+  - the groove reads 18–37 mm, but a new truck/bus tyre only has 14–15.5 mm of tread;
+  - with a laser fixed to the camera, a groove photographed from further away should shift the line
+    *less*. Here the frames with the line further left (further away) show *bigger* shifts (48–51 px vs 29–36 px).
+  Most likely the laser was not held at a fixed angle and distance to the camera.
+- **Fix:** mount the laser rigidly on the housing, give it fixed feet, run the shim calibration
+  (`calibrate.py`), and photograph a groove you've also measured with a tread gauge. Then these same
+  scripts give real mm.
 
 ---
 

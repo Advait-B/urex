@@ -48,9 +48,15 @@ def shift_px(z_mm, theta_deg=35.0, f_mm=2.8, L_mm=90.0, pitch_mm=0.0056):
 def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), standoff_mm=0.0,
               surface_tilt_mm=0.0, mm_per_px_lateral=0.35, tilt_px=2.0, bow_px=3.0, blur=1.0,
               line_peak=170, ambient=90, noise=6.0, sigma=1.5, speckle=0.15, seed=0,
-              baseline_row=None, optics=None):
+              baseline_row=None, optics=None, wall_mm=0.0, render="column"):
     """standoff_mm      tread surface distance beyond the reference plane (rubber feet sinking
                         in, tread crown curvature...). 0 = touching the feet.
+    render              "column": the line's brightness is a Gaussian in each column (fast;
+                        what the older tests use). "distance": brightness depends on the true
+                        distance to the line's centre curve, so steep walls stay as bright as
+                        the rest, like a real laser line (use with wall_mm).
+    wall_mm             groove walls slope over this width (mm) on each side. 0 = vertical walls
+                        (the line jumps). Real grooves slope, so the line runs down the wall.
     surface_tilt_mm     device not square to the tyre: surface height changes by this much
                         from the left edge of the frame to the right edge.
     tilt_px, bow_px     the line on the reference plane is not perfectly straight and level
@@ -72,7 +78,12 @@ def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), stand
     for (d_mm, w_mm), cx in zip(grooves, centres):
         half = (w_mm / mm_per_px_lateral) / 2
         lo, hi = int(round(cx - half)), int(round(cx + half))
-        depth[lo:hi] = d_mm
+        if wall_mm > 0:
+            ramp = wall_mm / mm_per_px_lateral
+            prof = np.clip(np.minimum(x - (cx - half), (cx + half) - x) / ramp, 0, 1) * d_mm
+            depth = np.maximum(depth, prof)
+        else:
+            depth[lo:hi] = d_mm
         truth.append({"depth_mm": d_mm, "width_mm": w_mm, "col_start": lo, "col_end": hi})
 
     # absolute distance of each column's surface beyond the reference plane
@@ -90,8 +101,17 @@ def make_pair(w=320, h=240, grooves=((7.0, 12.0), (6.0, 9.0), (2.5, 8.0)), stand
     A -= 25 * (depth[None, :] > 0) * np.exp(-((yy - y_line[None, :]) ** 2) / (2 * 6 ** 2))
 
     # ---- frame B: A + the laser line (Gaussian cross-section) with speckle
-    r = yy - y_line[None, :]
-    line = line_peak * np.exp(-(r ** 2) / (2 * sigma ** 2))
+    if render == "distance":
+        S = 4                                              # draw the centre curve 4x finer
+        canvas = np.full((h * S, w * S), 255, np.uint8)
+        pts = np.round(np.c_[(x + 0.5) * S - 0.5, (y_line + 0.5) * S - 0.5]).astype(np.int32)
+        cv2.polylines(canvas, [pts.reshape(-1, 1, 2)], False, 0, 1)
+        dist = cv2.distanceTransform(canvas, cv2.DIST_L2, 5) / S
+        dist = cv2.resize(dist, (w, h), interpolation=cv2.INTER_AREA)
+        line = line_peak * np.exp(-(dist ** 2) / (2 * sigma ** 2))
+    else:
+        r = yy - y_line[None, :]
+        line = line_peak * np.exp(-(r ** 2) / (2 * sigma ** 2))
     speck = 1 + speckle * cv2.GaussianBlur(rng.normal(0, 1, (h, w)).astype(np.float32), (0, 0), 1.2)
     B = A + line * speck
 

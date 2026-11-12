@@ -1,0 +1,365 @@
+\section{Algorithms and results, one family at a time}\label{sec:algos}
+
+Each family lives on its own branch (Table~\ref{tab:branches}). Unless stated otherwise, a line extractor is paired
+with the benchmark's default depth stage, so differences come from the line alone. Full comparison tables for all
+sets are in Section~\ref{sec:results}.
+
+\begin{table}[H]
+\centering\small
+\caption{Branches. All branch from \texttt{research/base} (simulator + benchmark) and were merged into
+\texttt{research/integration} for re-scoring.}\label{tab:branches}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Branch & Stage it changes & Uses learning? \\
+\midrule
+\texttt{research/peak-detectors} & finding the line (per image column) & no \\
+\texttt{research/dp-tracking} & finding the line (global path) & no \\
+\texttt{research/cnn-segmentation} & finding the line & yes, U-Net (85\,k weights) \\
+\texttt{research/pixel-classifier} & choosing which candidates are laser & yes, gradient boosting \\
+\texttt{research/robust-depth} & line $\rightarrow$ groove depth & no \\
+\texttt{research/calibration} & pixels $\rightarrow$ millimetres & no \\
+\texttt{research/quality-gate} & ``is this photo usable?'' & yes, logistic regression \\
+\texttt{research/onoff-fusion} & two photos: laser on, laser off & no \\
+\texttt{research/end-to-end} & image $\rightarrow$ depth directly & yes, CNN (155\,k weights) \\
+\texttt{research/best-stack} & combination of the above & (gate only) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+%---------------------------------------------------------------
+\subsection{Sub-pixel peak detectors}\label{sec:peak}
+
+\paragraph{Idea.} The laser line runs left to right, so in every image column there is one brightness peak. Find it
+and refine its position below one pixel. This is the classic approach in laser scanners and is far cheaper than the
+baseline's 2-D ridge detector. We compared centre of gravity, a 3-point Gaussian fit, the Blais--Rioux filters, and
+a smoothed peak with a parabola fit; all after removing the background with a morphological top-hat.
+
+\begin{lstlisting}[caption={Smoothed peak + parabola (\texttt{algos/pk\_fir2d.py}). The parabola through the three samples around the maximum gives the sub-pixel row.}]
+def parabola3(W, off):                      # W: (N, 3) response samples around each column peak
+    h = len(off) // 2
+    a, b, c = W[:, h - 1], W[:, h], W[:, h + 1]
+    den = a - 2 * b + c
+    d = np.where(den < -1e-6, 0.5 * (a - c) / np.where(den < -1e-6, den, -1.0), 0.0)
+    return np.clip(d, -1.0, 1.0)
+
+resp = smooth(img, 1.5, 1.5)                # img = top-hat of the frame
+thr = max(12.0, 0.25 * np.median(resp.max(axis=0)))
+iv, iu = column_peaks(resp, thr, max_per_col=3)
+v = iv + parabola3(*windows(resp, iv, iu, 1))
+\end{lstlisting}
+
+\paragraph{Results.} In clean conditions every per-column detector beats the baseline: depth MAE on \texttt{ideal}
+falls from 0.147 to about 0.06\,mm, and line error from 0.16 to 0.11--0.12\,px. They are also the cheapest methods
+(3--5\,ms of their own CPU time against 11\,ms for Steger). Under stress the \emph{typical} error is excellent
+(median 0.09\,mm against 0.54\,mm), but the mean stays near 1\,mm, because a per-column detector has no idea of a
+\emph{line}: one glint that is brighter than the laser in a few columns becomes a false groove. The 3-point Gaussian
+fit collapses when the line saturates (verdict accuracy 0.83 on \texttt{stress}). On real photos only the variant
+with an extra pass along the rows (\algo{pk\_fir2d\_rows}, which recovers steep groove walls) finds all six truck
+grooves.
+
+\takeaway{Per-column peaks are the most accurate and cheapest way to \emph{locate} a line you have already
+identified. They are not enough on their own to decide \emph{which} bright pixels are the line.}
+
+%---------------------------------------------------------------
+\subsection{Dynamic-programming line tracking}\label{sec:dp}
+
+\paragraph{Idea.} Use the fact that the laser line is one connected curve crossing the image. Give every pixel a
+``reward'' (how line-like it is) and find the single left-to-right path with the best total reward, paying a small
+price for gentle slopes and a fixed price for a jump (a groove edge). This is the Viterbi algorithm; it is exact,
+needs no training, and one glint cannot win because the path would have to pay to jump to it and back.
+
+\begin{lstlisting}[caption={Core of the Viterbi pass (\texttt{algos/dp\_dense.py}): cost of the best path ending at each pixel, column by column.}]
+# pen(d) = A*|d|       for |d| <= s   (gentle slope, e.g. a lit wall: cheap)
+#        = J + B*|d|   otherwise      (a groove edge: fixed price + a little per px)
+for c in range(1, W):
+    full = C[c - 1]                                   # C[c, v] = cost of the best path ending at (c, v)
+    prev = full[s:s + H]
+    near = prev.copy()
+    for k in range(1, s + 1):                         # smooth move of k rows up or down: A per px
+        np.minimum(near, full[s - k:s - k + H] + A * k, out=near)
+        np.minimum(near, full[s + k:s + k + H] + A * k, out=near)
+    # jump from any row v': prev[v'] + J + B*|v - v'|, as two running minima (from above, from below)
+    far = J + np.minimum(acc(prev - Br) + Br, acc((prev + Br)[::-1])[::-1] - Br)
+    C[c, s:s + H] = np.minimum(near, far) - R[c]      # R = reward in 0..1
+\end{lstlisting}
+
+\paragraph{Results.} \algo{dp\_dense} gives the best line of the training-free, single-frame extractors
+(Figure~\ref{fig:dp}). On \texttt{stress} the line F1 rises from 0.82 to 0.94, missed grooves fall from 9.9\,\% to
+1.8\,\%, depth MAE from 1.52 to 0.54\,mm and P95 from 6.7 to 0.59\,mm, with no unsafe PASS. On \texttt{handheld}
+it finds 96\,\% of grooves where the baseline finds 53\,\%. The work on this branch also explained two baseline
+faults: Steger's $\pm0.5$\,px acceptance test leaves holes that split one groove into two, and on a saturated line
+Steger marks the two \emph{edges} of the bright band instead of its centre. DP takes the mid-point of the band at
+half maximum instead. Cost: about 1.4$\times$ the baseline's run time.
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}[b]{0.54\linewidth}\includegraphics[width=\linewidth]{\figs/dp-tracking/factors_baseline_vs_dp.png}\end{subfigure}\hfill
+\begin{subfigure}[b]{0.40\linewidth}\includegraphics[width=\linewidth]{\figs/dp-tracking/real_saturated.png}\end{subfigure}
+\caption{Left: baseline (left column) against DP tracking (right column) on the same simulated scene with one
+difficulty switched on at a time; yellow bands are reported grooves. Right: two real photos with a thick saturated
+line; the baseline (left) follows an edge of the band, DP (right) follows its centre.}
+\label{fig:dp}
+\end{figure}
+
+\paragraph{What still fails.} Frames with many glints still produce about 0.1 false grooves per frame under stress,
+and paint or mud that hides the laser cannot be tracked through. On real photos DP agrees with the reference to
+1.1\,px (five of six within 3\,px).
+
+\takeaway{A global ``one line'' constraint removes most gross errors and costs no training data. This is the line
+extractor we recommend.}
+
+%---------------------------------------------------------------
+\subsection{Learned line detection: a small U-Net}\label{sec:cnn}
+
+\paragraph{Idea.} Train a neural network to paint a heat-map of where the laser line is, then read the peak in each
+column. The network is a three-level U-Net with 84{,}705 weights (0.36\,MB), trained only on the 1{,}200 simulated
+\texttt{train} frames with a soft cross-entropy plus Dice loss.
+
+\paragraph{Results.} Trained without augmentation, the network gives the best single-frame numbers on simulated
+stress (MAE 0.236\,mm, P95 0.47\,mm, verdict 0.985) but fails on real photos: it disagrees with the reference by
+7\,px. The cause is that every simulated line sits at the same height in the frame and has the same thickness; the
+network memorised that. With augmentation (random shifts, rotation, thickness and gain) real agreement improves
+to 1.1\,px and \texttt{handheld} line F1 reaches 0.90, but stress MAE rises to 0.67\,mm. It still needs a hand-written
+``keep one line'' rule after the heat-map, and at 60--90\,ms per frame on a laptop core it would take seconds on the
+STM32H7.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{\figs/cnn-segmentation/real_refs.png}
+\caption{The augmented U-Net on the twelve real reference photos, which it never saw in training
+(orange: reference, magenta: network). It follows the line on the truck tyre (bottom row) but is confused by
+background clutter on the rover tyre (top row).}
+\label{fig:cnn}
+\end{figure}
+
+\takeaway{A network trained only on simulation reaches roughly the same real-photo agreement as DP tracking at
+more than twice the cost. It becomes worth revisiting once there are a few hundred \emph{real} holder images to train on.}
+
+%---------------------------------------------------------------
+\subsection{Candidate classifier}\label{sec:cand}
+
+\paragraph{Idea.} Keep the classical detector, but let a small learned model decide which of its candidate points
+are laser and which are glints. Each candidate gets 30 hand-made features (brightness, width, how well it fits its
+neighbours, distance from the most common row) and a gradient-boosted classifier (scikit-learn
+\texttt{HistGradientBoostingClassifier}, 487\,kB) keeps those with probability $\geq 0.95$.
+
+\paragraph{Results.} On simulated stress this is very strong: MAE 0.273\,mm, false grooves 0.02 per frame, verdict
+0.970. But the feature-importance plot (Figure~\ref{fig:cand}) shows it relies almost entirely on one feature, the
+distance from the most common row, which works because the simulated line always sits at row $115\pm1$. On real
+photos it found two of the six reference grooves. A version without that feature is honest but weaker.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\linewidth]{\figs/pixel-classifier/feature_importance.png}
+\caption{What the candidate classifier relies on. Left: the full model leans on ``distance from the most common row''
+(\texttt{abs\_dv\_mode}), a shortcut that only exists in the simulator. Right: without it, the model uses local fit
+quality instead.}
+\label{fig:cand}
+\end{figure}
+
+\takeaway{A good score on simulation can come from a shortcut. Looking at what the model uses, and testing on real
+photos, exposed it. This result is the reason the \texttt{handheld} and \texttt{shifted} sets were added.}
+
+%---------------------------------------------------------------
+\subsection{Robust depth stage}\label{sec:depth}
+
+\paragraph{Idea.} Suppose the line is perfect. How wrong is the depth? With the default stage, about 0.07\,mm on
+average and too deep. This branch studied the second half of the pipeline (line $\rightarrow$ depth) on its own and
+rebuilt it in five small steps:
+\begin{enumerate}
+\item Convert every line point to a height and to its true sideways position on the tread, and fit the tread surface
+      in millimetres rather than in image columns.
+\item Fit the surface with RANSAC (a quadratic). Grooves are one-sided outliers, and the alternatives we tried
+      (Huber, Theil--Sen) break when grooves fill much of the view.
+\item Detect grooves, including shallow ones, with a running median, and drop narrow shallow blips.
+\item Take the groove floor as the deepest cluster found by DBSCAN, and its median as the depth. A single stray
+      point can no longer set the depth.
+\item Subtract a small tyre-curvature term, and attach an uncertainty and a ``floor not fully visible'' flag.
+\end{enumerate}
+
+\begin{lstlisting}[caption={Step 1 (\texttt{algos/robust\_depth.py}): undo lens distortion and express each point's sideways position in mm before fitting the tread surface.}]
+def lateral_px(u, v, z, width=320, height=240):
+    f = F_PX * width / 320.0
+    xd, yd = (u - (width - 1) / 2) / f, (v - (height - 1) / 2) / f
+    x, y = xd.copy(), yd.copy()
+    for _ in range(3):                         # undo the radial distortion
+        k = 1 + K1 * (x * x + y * y)
+        x, y = xd / k, yd / k
+    return 160.0 + 2.9 * x * (ZC_MM - z)       # X in mm, expressed as "ideal pixels"
+
+# in stage():   u = lateral_px(px, v, -q);  coef = RANSAC quadratic of q against u;  r = q - polyval(coef, u)
+# per groove:   z_s = -polyval(coef, u_floor);  z_f = z_s - d_raw
+#               d = (z_s - z_f) - TAN_LASER**2 * (z_f**2 - z_s**2) / (2 * tyre_R)
+\end{lstlisting}
+
+\paragraph{Results.} With a perfect line, depth MAE on \texttt{ideal} falls from 0.071 to 0.017\,mm and the bias
+from $+0.068$ to $-0.012$\,mm (Figure~\ref{fig:depth}, top). Most of the old bias was \emph{not} tyre curvature, as
+we first believed: it came from camera parallax and lens distortion bending the crown in image columns. The
+curvature term itself only matters for deep grooves ($+0.09$\,mm at 17\,mm) and is insensitive to the assumed tyre
+radius ($\pm0.005$\,mm for $\pm20\,\%$).
+
+With the baseline line, the new stage (\algo{rd\_final}) cuts stress MAE from 1.52 to 0.46\,mm and, on worn tyres,
+MAE from 0.053 to 0.019\,mm with \emph{no missed grooves}. The shallow-groove rule matters for safety: on a
+special set of 300 unevenly worn tyres the default stage called 9\,\% of illegal tyres PASS because it did not see
+the shallowest groove at all; the new stage called none (Figure~\ref{fig:depth}, bottom).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{\figs/robust-depth/bias_vs_depth.png}\\[4pt]
+\includegraphics[width=0.74\linewidth]{\figs/robust-depth/legal_boundary.png}
+\caption{Top: depth error with a perfect line against true depth: default stage, surface fitted in millimetres, and
+with the curvature term added. Bottom: measured against true depth on unevenly worn tyres; red crosses are grooves
+the stage did not see. The vertical and horizontal lines mark 1.6\,mm.}
+\label{fig:depth}
+\end{figure}
+
+\paragraph{Limits.} Rocking the holder about the tread axis adds about 1.2\,\% of the depth per degree, and one
+laser line cannot detect it. The correction uses holder constants (camera height, lens distortion), and the
+simulated crown is an exact parabola, so the gain on real treads will be smaller than in simulation. On real
+photos the DBSCAN floor disagrees with two of the six references by about 2.4\,px; without a gauge reading we
+cannot say which is right, but on the one pair of repeated photos it is far more consistent (0.17\,px apart instead
+of 2.45\,px).
+
+\takeaway{The depth stage was the largest source of error after gross line mistakes, and fixing it needs no
+learning: fit in millimetres, take the floor from a cluster, look for shallow grooves explicitly.}
+
+%---------------------------------------------------------------
+\subsection{Calibration}\label{sec:calib}
+
+\paragraph{Idea.} Calibration turns ``the line is at pixel $(u,v)$'' into ``the surface is at height $z$''. The
+October procedure photographs a flat plate at known heights and fits a polynomial. We compared polynomials, splines,
+a Gaussian process, and a \emph{physical} model with 5 or 7 parameters (pinhole camera, one distortion term, and
+the laser plane).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\linewidth]{\figs/calibration/a_plates.png}\\[4pt]
+\includegraphics[width=0.9\linewidth]{\figs/calibration/d_drift.png}
+\caption{Top: calibration error against the number of plate heights (left) and their range (right); the physical
+models (red, orange) stay accurate with three plates. Bottom: depth error after the laser is knocked by a fraction
+of a degree (left), and after correcting with one photo of a flat plate at zero height (centre, right).}
+\label{fig:calib}
+\end{figure}
+
+\paragraph{Results.}
+\begin{itemize}
+\item With 15 plates every sensible model is accurate to better than 0.02\,mm. With only three plates the physical
+      model still gives 0.002\,mm; the polynomial gives 0.12\,mm.
+\item The October recipe (plates from 0 to $-20$\,mm) never covers the tread itself, which sits at $+3.2$\,mm, so the
+      polynomial has to extrapolate. Recommended heights: $+4$, $+2$, $0$, $-3$, $-6$, $-10$, $-14$, $-18$\,mm.
+\item If the laser is knocked by $0.5^\circ$, every depth is scaled by about $+4\,\%$ (0.67\,mm at 16\,mm). One photo
+      of a flat plate at zero height detects this, and re-aiming the laser plane in the physical model corrects it
+      to within 0.003\,mm. A change of focal length is \emph{not} visible to that check.
+\item A systematic error in the shim heights passes straight through every model. Only a step of known depth can
+      catch it.
+\end{itemize}
+
+\caution{The simulator's camera \emph{is} a pinhole with one distortion term, so the physical model fits it perfectly
+by construction. Expect a smaller advantage on the real device; the ranking for few plates and for extrapolation
+should still hold.}
+
+\takeaway{Use the physical model, calibrate with eight heights that bracket the tread, and add a daily
+``zero check'' on a flat plate plus a known-depth step block.}
+
+%---------------------------------------------------------------
+\subsection{Quality gate}\label{sec:gate}
+
+\paragraph{Idea.} The baseline reports a depth on about 70\,\% of photos that a person would refuse to measure. A
+\emph{gate} decides, before a number is shown, whether the photo is good enough. We built it in two stages: a
+\emph{frame gate} (is there a laser line on a tyre at all?) trained on the 86 labelled real photos, and a \emph{risk
+gate} (is this particular reading likely to be wrong?) trained on simulated frames where the error is known.
+Both are regularised logistic regressions on a few dozen hand-made features.
+
+\begin{lstlisting}[caption={Some of the risk-gate features (\texttt{algos/gate\_features.py}). Each is a number a technician could also judge by eye.}]
+r = v - np.polyval(coef, u)                       # > 0 = below the fitted tread surface
+z.update({
+    "min_floor_pts": float(min(floor_n, default=0)),          # fewest points on any groove floor
+    "depth_spread_px": float(np.ptp([x["depth"] for x in g])) if g else 0.0,   # grooves of one tyre wear alike
+    "above_frac": float((r < -depth.PX["min_depth"]).mean()),  # points ABOVE the tread: glints, never rubber
+    "max_gap_frac": float(np.max(np.diff(np.r_[0, uc, w - 1])) / w),           # biggest hole in the line
+    "multi_frac": float((vr > 3).mean()),                      # columns where the line has two branches
+})
+\end{lstlisting}
+
+\paragraph{Results.} With the gate, the baseline answers 88\,\% of \texttt{ideal} frames, 96\,\% of \texttt{legal}
+frames and only 16\,\% of \texttt{stress} frames, but the answers it does give under stress are good: MAE falls from
+1.52 to 0.14\,mm and gross errors from 36\,\% to zero (Figure~\ref{fig:gate}). On real photos it keeps 17 of the 19
+usable frames and cuts false measurements from 69\,\% to 4\,\% on frames with no laser, and from 75\,\% to 25\,\% on
+frames where the laser is visible but unusable.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\linewidth]{\figs/quality-gate/risk_coverage.png}
+\caption{Risk--coverage curves: if the device only answers the share of presses it trusts most (horizontal axis),
+how bad are the answers (vertical axis)? Dots mark the threshold shipped, fixed on \texttt{train}.}
+\label{fig:gate}
+\end{figure}
+
+\caution{The frame gate was trained on the same 86 real photos, so the real-photo numbers above are
+\emph{in-sample}. The honest estimate is leave-one-session-out cross-validation: a false-accept rate of 0.24
+(95\,\% interval 0.14--0.36) when every choice is nested inside the cross-validation. More complex models did not
+help: a small CNN gate was at chance on a new day (AUC 0.49).}
+
+\takeaway{``Retake the photo'' is the cheapest robustness feature. With only 86 labelled photos, simple logistic
+regression is the right-sized model; more labelled sessions will help more than a bigger model.}
+
+%---------------------------------------------------------------
+\subsection{Laser on/off subtraction}\label{sec:onoff}
+
+\paragraph{Idea.} Take two photos a few milliseconds apart, one with the laser on and one with it off, and
+subtract. Everything that is not laser (sunlight, glints, paint) cancels. The October photos have no laser-off
+partner, so this was tested in simulation only, as a question to the hardware team: is it worth letting the
+microcontroller switch the laser?
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\linewidth]{\figs/onoff-fusion/example_on_off_diff.png}\\[4pt]
+\includegraphics[width=0.82\linewidth]{\figs/onoff-fusion/error_vs_motion.png}
+\caption{Top: a stress frame with glints; laser on, laser off, their difference, the difference when the hand moved
+2\,px between the photos, and the same after registration. Bottom: error against hand motion between the two
+photos, for plain and registered subtraction.}
+\label{fig:onoff}
+\end{figure}
+
+\paragraph{Results.} With a simple centre-of-gravity detector on the difference image (\algo{onoff\_cog}), stress
+MAE is 0.147\,mm, P95 0.40\,mm, false grooves 0.01 per frame, and no unsafe PASS on that set: the best
+stress numbers of any single method. Motion matters: with 2\,px of movement between the photos, plain
+subtraction is \emph{worse} than a single frame. Matching the gain, registering the two frames by phase correlation
+and dilating the off frame by one pixel keeps the error flat up to 3\,px of motion. Subtraction does not help with a
+saturating background, rocking, or a dim laser. Averaging several presses helps little, because the remaining
+error is mostly bias; a median of three is cheap insurance.
+
+\takeaway{If the next board revision can switch the laser with a GPIO pin, on/off subtraction is the single biggest
+robustness gain available, and it is twenty lines of code.}
+
+%---------------------------------------------------------------
+\subsection{End-to-end learning}\label{sec:e2e}
+
+\paragraph{Idea.} Skip the geometry: train a network to output groove depths directly from the image. A CNN with
+154{,}678 weights predicts, for every image column, the probability of a groove and its depth.
+
+\paragraph{Results.} On the sets that look like its training data it does well (\texttt{ideal} MAE 0.100\,mm,
+\texttt{stress} 0.483\,mm, 2\,ms per frame). Then it fails in every way that matters for a measuring instrument
+(Figure~\ref{fig:e2e}):
+\begin{itemize}
+\item On another holder unit (\texttt{shifted}) the MAE is 5.2\,mm with 8.7\,\% unsafe PASS. A calibration cannot
+      fix it, because the network has no calibration input.
+\item With the laser switched \emph{off} it still ``measures'' 52--91\,\% of the grooves. It learned that grooves look
+      dark, and that darker means deeper in the simulator.
+\item On 67 real photos that cannot be measured it reported a depth on 43, and never said FAIL.
+\item At the legal boundary it is the least safe method tested (2.7\,\% unsafe PASS, against 0 for the baseline).
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.56\linewidth]{\figs/end-to-end/real_and_laser_off.png}\hfill
+\includegraphics[width=0.42\linewidth]{\figs/end-to-end/ood_error.png}
+\caption{Left: the end-to-end network reports confident depths on photos of people and a ceiling light, and still
+finds grooves with the laser off. Right: its error under changes it was not trained for, against the geometric
+baseline.}
+\label{fig:e2e}
+\end{figure}
+
+\takeaway{For a safety measurement, keep the geometry as the measurement. Triangulation is correct for a reason we
+can explain to an auditor; a network's answer is only correct while the pictures look like its training set. Use
+learning as a helper (gate, line finder, cross-check), not as the ruler.}

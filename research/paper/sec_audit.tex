@@ -1,0 +1,59 @@
+\section{Independent audit}\label{sec:audit}
+
+Before writing this report, a separate reviewer that had written none of the code re-ran the key results from a
+clean checkout and looked for mistakes. The full audit is in \texttt{research/audit/AUDIT.md}; Table~\ref{tab:audit}
+summarises it.
+
+\begin{table}[H]
+\centering\small
+\caption{Audit summary.}\label{tab:audit}
+\begin{tabularx}{\linewidth}{@{}lX@{}}
+\toprule
+Check & Outcome \\
+\midrule
+Reproducibility & Nine algorithms re-scored; every one of 89 metrics per algorithm matched the stored value exactly. \\
+Data integrity & Test frames regenerate bit-for-bit from their seeds; the six simulated sets share no scenes. \\
+Leakage & No learned model was trained or tuned on a test set. One in-sample number: the frame gate on real photos
+          (flagged wherever it appears). \\
+Scorer & Behaves correctly on synthetic perfect, empty and always-abstain algorithms. Three quirks found (below). \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{What the audit changed in this report.}
+\begin{itemize}
+\item \textbf{Means have wide error bars.} A few gross failures dominate every stress MAE: for DP tracking, seven
+      grooves carry 78\,\% of the total error. Table~\ref{tab:boot} gives bootstrap intervals. Both improvements over
+      the baseline are real; DP tracking and the robust depth stage \emph{cannot be ranked against each other} on
+      mean error. We therefore report medians and gross-error rates next to every mean, and we do not rank the
+      better methods by small MAE differences.
+\item \textbf{Unsafe-PASS rates rest on few tyres.} Only 10, 17 and 14 tyres are illegal in \texttt{ideal},
+      \texttt{stress} and \texttt{shifted}; ``0.000'' there means ``0 of 17''. Counts are given in
+      Section~\ref{sec:stack}. Verdict accuracy on those sets is also flattering: always answering PASS would score
+      0.915 on \texttt{stress}. Only \texttt{legal} (64 illegal tyres of 150) supports a verdict claim.
+\item \textbf{A scoring artefact was removed.} The scorer showed the end-to-end network making no false measurements
+      on real photos, because it outputs millimetres and the real-photo scorer only counts pixel outputs. Run
+      directly, it reports a depth on 43 of 67 unusable photos. Its rows are left out of the real and hand-held
+      tables.
+\item \textbf{On/off numbers are for a perfectly still device.} In the benchmark the laser-off frame is the same
+      scene with no motion. The effect of motion was studied separately (Figure~\ref{fig:onoff}), and there is no
+      real-photo evidence for on/off at all.
+\item \textbf{The U-Net was trained once}, with one random seed; its numbers have unknown run-to-run spread.
+\end{itemize}
+
+\begin{table}[H]
+\centering\small
+\caption{Bootstrap over frames (1{,}000 resamples) on \texttt{stress}: depth error in mm with 95\,\% intervals.}\label{tab:boot}
+\begin{tabular}{@{}lllrr@{}}
+\toprule
+Algorithm & MAE [95\,\% interval] & Median [95\,\% interval] & Error carried by worst 5\,\% & MAE without them \\
+\midrule
+Baseline & 1.52 [1.13, 1.93] & 0.54 [0.32, 0.67] & 48\,\% & 0.83 \\
+DP line only & 0.54 [0.25, 0.94] & 0.09 [0.07, 0.11] & 78\,\% & 0.12 \\
+Robust depth only & 0.46 [0.34, 0.63] & 0.09 [0.07, 0.11] & 53\,\% & 0.23 \\
+\midrule
+\multicolumn{5}{@{}l}{Paired differences in MAE: baseline $-$ DP $=0.95$ [0.44, 1.45]; baseline $-$ robust depth $=1.03$ [0.68, 1.45];}\\
+\multicolumn{5}{@{}l}{DP $-$ robust depth $=0.08$ [$-0.24$, $+0.48$] (no detectable difference).}\\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -1,0 +1,28 @@
+\begin{tabular}{@{}llrrrrrrrrrr@{}}
+\toprule
+Group & Algorithm & Cov. & MAE & Median & P95 & Gross & Miss & False & Verdict & F.pass & CPU ms \\
+\midrule
+Reference & Baseline (Steger ridge) & 1.00 & 1.516 & 0.535 & 6.678 & 0.364 & 0.099 & 0.210 & 0.915 & 0.015 & 25.8 \\
+\addlinespace[2pt]
+Per-column peak & Centre of gravity & 1.00 & 1.061 & 0.085 & 8.525 & 0.096 & 0.069 & 0.160 & 0.930 & 0.005 & 18.9 \\
+ & 2-D Gaussian + parabola & 1.00 & 1.089 & 0.089 & 5.317 & 0.073 & 0.101 & 0.185 & 0.960 & \textbf{0.000} & 24.1 \\
+\addlinespace[2pt]
+Tracking & Viterbi line tracking & 1.00 & 0.544 & 0.086 & 0.591 & 0.033 & 0.018 & 0.115 & 0.955 & \textbf{0.000} & 30.6 \\
+\addlinespace[2pt]
+Learned line & U-Net, augmented & 1.00 & 0.668 & 0.106 & 2.187 & 0.060 & 0.057 & 0.125 & 0.945 & \textbf{0.000} & 67.3 \\
+ & U-Net, no augmentation & 1.00 & 0.236 & 0.091 & 0.467 & 0.021 & 0.009 & 0.030 & 0.985 & \textbf{0.000} & 63.2 \\
+ & Candidate classifier (GBM) & 1.00 & 0.273 & 0.088 & 0.561 & 0.024 & 0.024 & 0.020 & 0.970 & \textbf{0.000} & 32.4 \\
+\addlinespace[2pt]
+Depth stage & Baseline line + robust depth & 1.00 & 0.464 & 0.093 & 2.225 & 0.121 & 0.113 & 0.145 & 0.940 & 0.010 & 37.1 \\
+\addlinespace[2pt]
+Gate & Baseline + quality gate & 0.16 & \textbf{0.136} & \textbf{0.069} & 0.634 & \textbf{0.000} & 0.107 & 0.031 & 0.906 & 0.005 & 71.3 \\
+\addlinespace[2pt]
+Two frames & Laser on/off subtraction & 1.00 & 0.147 & 0.080 & 0.396 & 0.009 & \textbf{0.003} & \textbf{0.010} & 0.980 & \textbf{0.000} & 22.0 \\
+\addlinespace[2pt]
+No geometry & End-to-end CNN & 1.00 & 0.483 & 0.247 & 1.963 & 0.102 & 0.006 & 0.015 & 0.980 & 0.015 & 2.3 \\
+\addlinespace[2pt]
+Combined & DP line + robust depth & 1.00 & 0.325 & 0.088 & 0.540 & 0.036 & 0.015 & 0.065 & 0.955 & \textbf{0.000} & 37.0 \\
+ & \textbf{Recommended stack} (+ gates) & 0.89 & 0.249 & 0.088 & 0.497 & 0.027 & \textbf{0.003} & 0.017 & \textbf{0.994} & \textbf{0.000} & 92.8 \\
+ & On/off line + robust depth & 1.00 & 0.142 & 0.084 & \textbf{0.339} & 0.012 & \textbf{0.003} & 0.025 & 0.975 & 0.005 & 30.5 \\
+\bottomrule
+\end{tabular}
