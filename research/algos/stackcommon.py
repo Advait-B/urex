@@ -18,12 +18,12 @@ from bench import depth as bench_depth
 RD = {"floor": "dbscan", "detect": "shape", "lo_k": 3.5}          # = algos/rd_final.CONFIG
 LEGAL_MM = 1.6
 CAP_MM = 25.0                    # new bus tyre: 14-20 mm; nothing on a tyre is deeper than this
-CAP_PX = CAP_MM * 2.1 * 1.5      # no calibration: 2.1 px/mm at the design distance, x1.5 for a camera held closer
+CAP_PX_FRAC = 0.40               # no calibration, no mm: only a sanity limit, a line shift of > 40 % of the image height
 MODELS = os.path.join(os.path.dirname(__file__), "..", "models")
 
 
-def apply_cap(out):
-    cap = CAP_MM if out["unit"] == "mm" else CAP_PX
+def apply_cap(out, height):
+    cap = CAP_MM if out["unit"] == "mm" else CAP_PX_FRAC * height
     out["capped"] = [g for g in out["grooves"] if g["depth"] > cap]
     out["grooves"] = [g for g in out["grooves"] if g["depth"] <= cap]
     return out
@@ -88,7 +88,7 @@ def measure(gray, calib=None, off=None, line_fn=None, depth="rd", cap=False, lb=
         out = bench_depth.measure_from_line(line["u"], line["v"], calib)
     out["line"] = line
     if cap:
-        apply_cap(out)
+        apply_cap(out, gray.shape[0])
     out["verdict"] = verdict_rule(out["grooves"]) if calib is not None else None
     if not (lb or frame_gate or risk_model):
         return out                                                # no abstaining: every frame is answered (as the baseline)
