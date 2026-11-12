@@ -1,4 +1,4 @@
-"""onoff_robust.py - laser-on / laser-off: (3) gain match + phase-correlation registration + conservative (dilated-off) subtraction, then the baseline detector.
+"""onoff_robust.py - laser-on / laser-off: (3) gain match + phase-correlation registration + conservative (dilated-off) subtraction, then the per-column centre of gravity (detector chosen on train).
 
 Falls back to the single-frame baseline when no off frame is given (real photos).
 """
@@ -14,4 +14,4 @@ def extract_line(gray, off=None):
     if off is None:
         return base.extract_line(gray)
     d = oc.difference(gray, off, MODE)
-    return oc.steger_line(d)
+    return oc.cog_line(d)
