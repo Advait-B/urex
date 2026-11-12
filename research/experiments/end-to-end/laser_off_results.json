@@ -1,0 +1,56 @@
+{
+ "ideal/e2e_cnn": {
+  "depth_mae_mm": 2.950742216766047,
+  "depth_bias_mm": -0.9733894456056531,
+  "miss_rate": 0.23507462686567165,
+  "false_per_frame": 0.15333333333333332,
+  "verdict_acc": 0.8466666666666667,
+  "false_pass_rate": 0.02,
+  "corr_pred_true": 0.48020163734874205
+ },
+ "ideal/baseline": {
+  "depth_mae_mm": null,
+  "depth_bias_mm": null,
+  "miss_rate": 1.0,
+  "false_per_frame": 0.0,
+  "verdict_acc": 0.06666666666666667,
+  "false_pass_rate": 0.0,
+  "corr_pred_true": null
+ },
+ "stress/e2e_cnn": {
+  "depth_mae_mm": 3.354526592679967,
+  "depth_bias_mm": 0.42965958683743055,
+  "miss_rate": 0.09253731343283582,
+  "false_per_frame": 0.235,
+  "verdict_acc": 0.935,
+  "false_pass_rate": 0.055,
+  "corr_pred_true": 0.402945100872255
+ },
+ "stress/baseline": {
+  "depth_mae_mm": 24.888439547959027,
+  "depth_bias_mm": 20.958220492838624,
+  "miss_rate": 0.9194029850746268,
+  "false_per_frame": 0.425,
+  "verdict_acc": 0.44,
+  "false_pass_rate": 0.04,
+  "corr_pred_true": -0.0318999562618466
+ },
+ "legal/e2e_cnn": {
+  "depth_mae_mm": 3.685911177588937,
+  "depth_bias_mm": 3.669900472609867,
+  "miss_rate": 0.4797297297297297,
+  "false_per_frame": 0.2,
+  "verdict_acc": 0.7,
+  "false_pass_rate": 0.18,
+  "corr_pred_true": 0.3180680688682202
+ },
+ "legal/baseline": {
+  "depth_mae_mm": null,
+  "depth_bias_mm": null,
+  "miss_rate": 1.0,
+  "false_per_frame": 0.0,
+  "verdict_acc": 0.4266666666666667,
+  "false_pass_rate": 0.0,
+  "corr_pred_true": null
+ }
+}

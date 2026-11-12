@@ -7,6 +7,7 @@ Shifts (100 fresh frames each, scenes drawn like `train` unless stated):
   deep_18_22    grooves 18-22 mm (training stops at 18)
   four_grooves  4 grooves in view (training has 1-3)
   res_640x480   same device read out at 640x480
+  uneven_wear   every groove gets its own depth 0.6-17 mm (training: all grooves within ~1 mm of each other)
 Also scores ideal / stress / legal with the same extra metric (error of the frame's minimum depth),
 which is the only depth number all three approaches can be compared on.
 """
@@ -15,6 +16,7 @@ import json
 import os
 import sys
 
+import cv2
 import numpy as np
 import torch
 
@@ -29,6 +31,7 @@ from bench import datasets, run  # noqa: E402
 
 OUT = "experiments/end-to-end/ood_results.json"
 N = 100
+SEEDS = {"in_dist": 7003, "laser_37deg": 7004, "deep_18_22": 7005, "four_grooves": 7006, "res_640x480": 7007, "uneven_wear": 7008}
 DEV37 = {**hs.DEVICE, "theta_deg": 37.0}
 
 
@@ -45,6 +48,9 @@ def make(shift, seed, n=N):
             base = rng.uniform(18.5, 21.5)
             for g in s["grooves"]:
                 g["d"] = float(np.clip(base + rng.normal(0, 0.5), 18.0, 22.0))
+        if shift == "uneven_wear":
+            for g in s["grooves"]:
+                g["d"] = float(rng.uniform(0.6, 17.0))
         if shift == "four_grooves":
             while True:
                 cx = np.sort(rng.uniform(-44, 44, 4))
@@ -106,17 +112,22 @@ def main():
     res = json.load(open(OUT)) if os.path.exists(OUT) else {}
     cal0 = calib_mod.default_calib()
     _, base = run.resolve(baseline_steger)
-    todo = sys.argv[1:] or ["ideal", "stress", "legal", "in_dist", "laser_37deg", "deep_18_22", "four_grooves", "res_640x480"]
-    for k, shift in enumerate(todo):
+    todo = sys.argv[1:] or ["ideal", "stress", "legal", "in_dist", "laser_37deg", "deep_18_22", "four_grooves", "res_640x480", "uneven_wear"]
+    for shift in todo:
         if shift in ("ideal", "stress", "legal"):
             items, dev, size = datasets.load_sim(shift), hs.DEVICE, (320, 240)
         else:
-            items, dev, size = make(shift, 7000 + k)
+            items, dev, size = make(shift, SEEDS[shift])
         r = {"e2e_cnn": score(e2e_cnn.measure, items, None), "e2e_gbm": score(e2e_gbm.measure, items, None),
              "baseline": score(base, items, cal0)}
         if shift in ("laser_37deg", "res_640x480"):
             cal, info = calib_mod.fit(plates(dev, size), baseline_steger.extract_line)
             r["baseline_recal"] = {**score(base, items, cal), "calib_rms_mm": info["rms_mm"]}
+        if shift == "res_640x480":                                        # the same trick the learners use: shrink first
+            def small(g, c=None, o=None):
+                out = base(cv2.resize(g, (320, 240), interpolation=cv2.INTER_AREA), c, None)
+                return {"grooves": [{**q, "u0": q["u0"] * 2, "u1": q["u1"] * 2} for q in out["grooves"]]}
+            r["baseline_downscaled"] = score(small, items, cal0)
         if shift == "laser_37deg":
             for n_lab in (15, 50):
                 lab, _, _ = make(shift, 9000, n_lab)                      # labelled frames from the new unit
