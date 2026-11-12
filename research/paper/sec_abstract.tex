@@ -1,1 +1,19 @@
-% stub
+\begin{abstract}
+\noindent UREX is a handheld device that measures bus tyre tread depth by laser triangulation: a camera looks down at
+the tread, a line laser strikes it at $35^\circ$, and the line shifts by about 2\,px for every millimetre of groove
+depth. Our existing software works on good photos but reports a depth on most bad ones. We built a ray-traced
+simulator of the printed holder and a benchmark with exact ground truth (five test sets, 800 frames), and used it,
+together with 86 real hand-held photos, to compare ten families of algorithms: sub-pixel peak detectors,
+dynamic-programming line tracking, a small U-Net, a learned candidate classifier, a robust depth stage, calibration
+models, a quality gate, laser on/off subtraction, an end-to-end network, and a combination. The best single-frame
+pipeline is almost entirely classical: Viterbi line tracking, a depth stage that fits the tread in millimetres and
+clusters the groove floor, and two logistic-regression gates that can ask for a retake. Under simulated bad
+conditions it reduces the mean depth error from 1.52 to 0.25\,mm, gross errors ($>1$\,mm) from 36\,\% to 2.7\,\%, while
+answering 89\,\% of presses; across the three hardest sets it passes none of 41 illegal tyres where the baseline
+passes 9; on real photos it stops reporting
+depths on frames with no laser (cross-validated: 0 of 55) and agrees with the reference depths to about one pixel.
+An independent audit reproduced every number exactly and found no training on test data. Networks that replace the geometry scored well on data like their training set and failed on other units and on
+real photos. Laser on/off subtraction, which needs a small hardware change, would roughly halve the remaining error in simulation. The
+real photos have no gauge readings, so real-world accuracy is still unmeasured; collecting that ground truth with
+the printed holder is the most valuable next step.
+\end{abstract}

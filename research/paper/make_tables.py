@@ -23,7 +23,21 @@ ROWS = [
     ("gated_baseline", "Baseline + quality gate", "Gate"),
     ("onoff_cog", "Laser on/off subtraction", "Two frames"),
     ("e2e_cnn", "End-to-end CNN", "No geometry"),
-    ("stack_best", "Recommended stack", "Combined"),
+    ("stack_dp_rd", "DP line + robust depth", "Combined"),
+    ("stack_dp_rd_gate", "\\textbf{Recommended stack} (+ gates)", "Combined"),
+    ("stack_onoff_rd", "On/off line + robust depth", "Combined"),
+]
+
+ABL = [
+    ("baseline_steger", "0\\quad Baseline", ""),
+    ("dp_dense", "1a\\quad DP line only", ""),
+    ("rd_final", "1b\\quad Robust depth only", ""),
+    ("stack_dp_rd", "2\\quad DP line + robust depth", ""),
+    ("stack_dp_rd_cap", "3\\quad + 25 mm cap", ""),
+    ("stack_dp_rd_lb", "4\\quad + lower-bound rule", ""),
+    ("stack_dp_rd_risk", "5\\quad + risk gate", ""),
+    ("stack_dp_rd_gate", "6\\quad + frame gate \\textbf{(recommended)}", ""),
+    ("stack_onoff_rd", "7\\quad Row 2 with on/off line", ""),
 ]
 
 
@@ -48,16 +62,18 @@ def best_marks(vals, lower=True):
     return [isinstance(v, (int, float)) and abs(v - b) < 5e-4 for v in vals]
 
 
-def table(fname, set_name, cols, rows=ROWS, skip_best=("baseline_steger",)):
+def table(fname, set_name, cols, rows=ROWS, skip=(), group_col=True):
     """cols: list of (key, header, digits, lower_is_better or None)."""
     data = []
     for mod, label, group in rows:
         r = load(mod)
+        if mod in skip:
+            continue
         if r is None or set_name not in r["sets"]:
             continue
         data.append((label, group, r["sets"][set_name]))
-    lines = ["\\begin{tabular}{@{}ll" + "r" * len(cols) + "@{}}", "\\toprule",
-             "Group & Algorithm & " + " & ".join(h for _, h, _, _ in cols) + " \\\\", "\\midrule"]
+    lines = ["\\begin{tabular}{@{}" + ("ll" if group_col else "l") + "r" * len(cols) + "@{}}", "\\toprule",
+             ("Group & Algorithm & " if group_col else "Step & ") + " & ".join(h for _, h, _, _ in cols) + " \\\\", "\\midrule"]
     marks = {}
     for key, _, _, lower in cols:
         vals = [d[2].get(key) for d in data]
@@ -70,7 +86,7 @@ def table(fname, set_name, cols, rows=ROWS, skip_best=("baseline_steger",)):
         for key, _, nd, _ in cols:
             t = f(s.get(key), nd)
             cells.append("\\textbf{" + t + "}" if marks[key][i] else t)
-        lines.append(f"{group if group != last else ''} & {label} & " + " & ".join(cells) + " \\\\")
+        lines.append((f"{group if group != last else ''} & " if group_col else "") + f"{label} & " + " & ".join(cells) + " \\\\")
         last = group
     lines += ["\\bottomrule", "\\end{tabular}"]
     os.makedirs(OUT, exist_ok=True)
@@ -92,5 +108,9 @@ REAL = [("line_f1_truck", "Line F1", 3, False), ("depth_mae_px", "$\\Delta$ px",
 if __name__ == "__main__":
     for s in ("ideal", "stress", "legal", "shifted"):
         table(f"tab_{s}.tex", s, MM)
-    table("tab_handheld.tex", "handheld", PX)
-    table("tab_real.tex", "real", REAL)
+    table("tab_handheld.tex", "handheld", PX, skip=("e2e_cnn",))
+    table("tab_real.tex", "real", REAL, skip=("onoff_cog", "stack_onoff_rd", "e2e_cnn"))
+    A = [c for c in MM if c[0] != "cpu_ms"]
+    for s in ("stress", "shifted"):
+        table(f"abl_{s}.tex", s, A, rows=ABL, group_col=False)
+    table("abl_handheld.tex", "handheld", PX, rows=ABL, group_col=False)

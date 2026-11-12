@@ -10,15 +10,19 @@ Per-column peak & Centre of gravity & 1.00 & 1.199 & 0.077 & 8.984 & 0.095 & 0.0
 Tracking & Viterbi line tracking & 1.00 & 0.501 & 0.081 & 0.447 & 0.021 & 0.040 & 0.060 & 0.960 & 0.013 & 30.5 \\
 \addlinespace[2pt]
 Learned line & U-Net, augmented & 1.00 & 0.416 & 0.071 & 0.567 & 0.047 & 0.079 & 0.093 & 0.940 & 0.020 & 62.9 \\
- & U-Net, no augmentation & 1.00 & 0.132 & 0.065 & \textbf{0.358} & 0.016 & \textbf{0.028} & 0.047 & 0.973 & 0.013 & 63.0 \\
+ & U-Net, no augmentation & 1.00 & 0.132 & 0.065 & 0.358 & 0.016 & 0.028 & 0.047 & 0.973 & 0.013 & 63.0 \\
  & Candidate classifier (GBM) & 1.00 & 0.466 & 0.093 & 1.766 & 0.066 & 0.040 & 0.047 & 0.953 & 0.020 & 29.0 \\
 \addlinespace[2pt]
-Depth stage & Baseline line + robust depth & 1.00 & 0.479 & \textbf{0.056} & 2.133 & 0.082 & 0.087 & 0.093 & 0.960 & \textbf{0.000} & 35.1 \\
+Depth stage & Baseline line + robust depth & 1.00 & 0.479 & 0.056 & 2.133 & 0.082 & 0.087 & 0.093 & 0.960 & \textbf{0.000} & 35.1 \\
 \addlinespace[2pt]
-Gate & Baseline + quality gate & 0.52 & \textbf{0.117} & 0.067 & 0.414 & \textbf{0.000} & 0.073 & \textbf{0.000} & \textbf{0.987} & 0.007 & 63.8 \\
+Gate & Baseline + quality gate & 0.52 & \textbf{0.117} & 0.067 & 0.414 & \textbf{0.000} & 0.073 & \textbf{0.000} & 0.987 & 0.007 & 63.8 \\
 \addlinespace[2pt]
-Two frames & Laser on/off subtraction & 1.00 & 0.182 & 0.073 & 0.383 & 0.008 & \textbf{0.028} & \textbf{0.000} & 0.987 & 0.013 & 22.3 \\
+Two frames & Laser on/off subtraction & 1.00 & 0.182 & 0.073 & 0.383 & 0.008 & 0.028 & \textbf{0.000} & 0.987 & 0.013 & 22.3 \\
 \addlinespace[2pt]
 No geometry & End-to-end CNN & 1.00 & 5.216 & 3.231 & 19.888 & 0.754 & 0.115 & 1.953 & 0.907 & 0.087 & 2.7 \\
+\addlinespace[2pt]
+Combined & DP line + robust depth & 1.00 & 0.143 & 0.054 & 0.305 & 0.016 & 0.024 & 0.033 & 0.980 & \textbf{0.000} & 34.8 \\
+ & \textbf{Recommended stack} (+ gates) & 0.91 & 0.141 & \textbf{0.048} & 0.305 & 0.013 & 0.013 & 0.007 & \textbf{1.000} & \textbf{0.000} & 96.6 \\
+ & On/off line + robust depth & 1.00 & 0.131 & 0.055 & \textbf{0.238} & 0.012 & \textbf{0.000} & \textbf{0.000} & \textbf{1.000} & \textbf{0.000} & 31.5 \\
 \bottomrule
 \end{tabular}

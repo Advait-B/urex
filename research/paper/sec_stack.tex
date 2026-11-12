@@ -1,1 +1,154 @@
-% stub
+\section{The combined pipeline}\label{sec:stack}
+
+The families above improve different stages, so the best pieces can be chained. The recommended single-frame
+pipeline (\algo{stack\_dp\_rd\_gate}) is shown in Figure~\ref{fig:pipeline}; its core is twenty lines of glue
+(Listing~\ref{lst:stack}).
+
+\begin{figure}[H]
+\centering
+\begin{tikzpicture}[node distance=5mm, every node/.style={font=\small},
+  blk/.style={draw=accent, fill=boxbg, rounded corners=2pt, minimum height=11mm, text width=24mm, align=center},
+  io/.style={draw=black!50, rounded corners=2pt, minimum height=11mm, text width=17mm, align=center},
+  arr/.style={-{Stealth[length=2mm]}, thick, black!70}]
+\node[io] (img) {image\\$320\times240$};
+\node[blk, right=of img] (dp) {\textbf{1. Line}\\Viterbi tracking};
+\node[blk, right=of dp] (cal) {\textbf{2. Calibrate}\\pixel $\to$ mm};
+\node[blk, right=of cal] (rd) {\textbf{3. Depth}\\RANSAC surface, DBSCAN floor};
+\node[blk, right=of rd] (gate) {\textbf{4. Gates}\\cap, frame gate, risk gate};
+\node[io, right=of gate] (out) {depths, PASS / FAIL or \emph{retake}};
+\draw[arr] (img)--(dp); \draw[arr] (dp)--(cal); \draw[arr] (cal)--(rd); \draw[arr] (rd)--(gate); \draw[arr] (gate)--(out);
+\end{tikzpicture}
+\caption{The recommended single-frame pipeline. Stages 1--3 are classical geometry; only the two gates in stage 4
+are learned (logistic regression).}
+\label{fig:pipeline}
+\end{figure}
+
+\begin{lstlisting}[caption={The composition (\texttt{algos/stackcommon.py}, shortened).},label={lst:stack}]
+def measure(gray, calib=None, off=None, line_fn=None, cap=False, lb=False, frame_gate=False, risk_model=None):
+    line = line_fn(gray, off)                                          # 1. dp_dense.extract_line
+    out = robust_depth.stage(line["u"], line["v"], calib, **RD)        # 2. rd_final: floor=dbscan, detect=shape
+    out["line"] = line
+    if cap:                                                            # 3. deeper than 25 mm is not a groove
+        apply_cap(out, gray.shape[0])
+    out["verdict"] = verdict_rule(out["grooves"]) if calib is not None else None   # 4. PASS / FAIL / RETAKE
+    usable = 1.0 if out["grooves"] else 0.0                            # 5. no groove found = retake
+    if frame_gate and usable >= 0.5:                                   #    is there a laser line on a tyre at all?
+        out["p_frame"], _ = _prob("frame_lr", gate_features.features(gray)[0])
+        usable = min(usable, out["p_frame"])
+    if risk_model and calib is not None and usable >= 0.5:             #    is one of these depths probably wrong?
+        out["p_bad"], t = _prob(risk_model, stack_features(gray, line, out))
+        if out["p_bad"] > t:
+            usable = 0.4
+    out["usable"] = usable                                             # < 0.5 -> "retake the photo"
+    return out
+\end{lstlisting}
+
+\subsection{Ablation: what each piece is worth}
+
+Table~\ref{tab:ablation} adds one piece at a time. Rows 1a and 1b each change one thing against the baseline; rows
+3--6 build on row 2; row 7 swaps the line extractor of row 2 for laser on/off subtraction.
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{Ablation on \texttt{stress} (top) and on other holder units, \texttt{shifted} (bottom). Depth columns in
+mm. Bold = best in column.}\label{tab:ablation}
+\input{tables/abl_stress}\\[6pt]
+\input{tables/abl_shifted}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\linewidth]{\figs/best-stack/error_vs_depth.png}
+\caption{Depth error of every scored groove, baseline (blue) against the recommended stack (orange), on
+\texttt{stress} and \texttt{shifted}. Errors beyond $\pm12$\,mm are clipped to the edge.}
+\label{fig:scatter}
+\end{figure}
+
+What the table says, in order of importance:
+\begin{enumerate}
+\item \textbf{A better line and a better depth stage each remove about two thirds of the mean error} (rows 1a, 1b).
+      On mean error the two cannot be ranked against each other (Section~\ref{sec:audit}); DP tracking removes more of
+      the gross errors (36\,\% $\to$ 3\,\%) and nearly all missed grooves.
+\item \textbf{They add up.} Together they reach 0.33\,mm on \texttt{stress} and 0.14\,mm on other
+      units, where each alone was near 0.5\,mm. They fix different errors.
+\item \textbf{The risk gate buys safety, not accuracy.} For 9\,\% fewer answers it removes three quarters of the
+      false grooves and lifts verdict accuracy to 0.995.
+\item \textbf{The frame gate} barely changes these sets (every frame shows a tyre); its job is to refuse photos of
+      something else (Table~\ref{tab:real}).
+\item \textbf{Two ideas did nothing.} The 25\,mm plausibility cap fired on 6 of 1{,}200 training frames. The
+      ``lower-bound'' verdict rule (treat a groove with a hidden floor as ``at least $x$\,mm'') never fired on any
+      set. Both are kept as harmless safety nets, but neither earned its place on the evidence.
+\item \textbf{On/off subtraction would roughly halve the remaining stress error} (row 7) with no gate at all.
+\end{enumerate}
+
+\paragraph{What the recommended stack still gets wrong.} On \texttt{stress}, ten grooves carry 56\,\% of all
+remaining error; without them the MAE would be 0.11\,mm. All ten are deep grooves (5--17\,mm), so none changes a
+PASS/FAIL verdict. Their causes: the floor of a deep groove lost under a dim laser in sunlight (3), paint or
+saturation hiding the floor (2), a glint streak inside the groove (3), and geometry such as $2^\circ$ of rocking (2).
+\paragraph{Safety in counts.} Rates hide how few illegal tyres the sets contain, so here are counts. Across
+\texttt{ideal}, \texttt{stress} and \texttt{shifted} there are 41 illegal tyres: the baseline passed 9 of them, the
+recommended stack none. On \texttt{legal} (64 illegal tyres) the baseline passed none and the stack passed one: a
+1.58\,mm groove read as 1.60\,mm. The device needs a
+\emph{guard band}: PASS only above, say, 1.8\,mm, and ``borderline'' between 1.4 and 1.8\,mm.
+
+\section{Overall comparison}\label{sec:results}
+
+Tables~\ref{tab:stress}--\ref{tab:real} put the main variant of every family side by side. All numbers are generated
+from the scorer's JSON output by \texttt{paper/make\_tables.py}; none is typed by hand.
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{\texttt{stress}: 200 simulated frames in bad conditions. Depth columns in mm. Bold = best in column
+(the gated rows answer fewer frames, see Cov.).}\label{tab:stress}
+\input{tables/tab_stress}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{\texttt{ideal}: 150 simulated frames with the holder locked on a clean tyre.}\label{tab:ideal}
+\input{tables/tab_ideal}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{\texttt{legal}: 150 worn tyres around the 1.6\,mm limit. Here F.pass is the number that matters.}\label{tab:legal}
+\input{tables/tab_legal}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{\texttt{shifted}: three other holder units, each with its own calibration.}\label{tab:shifted}
+\input{tables/tab_shifted}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{\texttt{handheld}: 150 simulated frames built to resemble the real photos; errors in pixels of line shift.
+The end-to-end network outputs millimetres only and cannot be scored here.}\label{tab:handheld}
+\input{tables/tab_handheld}
+\end{table}
+
+\begin{table}[H]
+\centering\footnotesize\setlength{\tabcolsep}{3.4pt}
+\caption{Real photos (86). ``$\Delta$\,px'' is the mean difference from the baseline-derived reference on six
+truck-tyre frames, so the baseline's own row is near zero by construction. ``Usable kept'': share of the 19 good
+photos answered. ``F.meas'': share of unusable photos on which a depth was still reported (55 with no laser,
+12 with a laser that cannot be measured). The gate rows are in-sample for the frame gate; cross-validated values
+are in the text. Methods needing a laser-off frame or a calibration are omitted.}\label{tab:real}
+\input{tables/tab_real}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.88\linewidth]{\figs/best-stack/real_overlay.png}
+\caption{Baseline (blue) and recommended (orange) lines on three real photos. On the truck tyre they agree to within
+a pixel. On the cluttered rover photo both follow background edges; this is the kind of frame the gate must refuse.}
+\label{fig:realoverlay}
+\end{figure}
+
+\paragraph{Reading the real-photo table.} Three things can be said. First, the recommended stack agrees with the
+reference to about 1\,px on all six truck frames, which at the holder's scale would be about 0.5\,mm; whether the
+stack or the reference is nearer the truth is unknown. Second, without a gate \emph{every} method reports depths on
+half or more of the photos that show no laser at all. Third, with the gate, and with the frame gate re-fitted
+without the photos being scored (leave-one-session-out), the stack answers 15 of 19 usable photos, 0 of 55 photos
+with no laser, and 3 of 12 photos with an unusable laser.

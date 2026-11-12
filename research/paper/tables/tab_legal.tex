@@ -13,12 +13,16 @@ Learned line & U-Net, augmented & 1.00 & 0.036 & 0.033 & 0.087 & \textbf{0.000} 
  & U-Net, no augmentation & 1.00 & 0.035 & 0.025 & 0.079 & \textbf{0.000} & 0.054 & \textbf{0.000} & \textbf{0.993} & \textbf{0.000} & 60.1 \\
  & Candidate classifier (GBM) & 1.00 & 0.044 & 0.028 & 0.083 & \textbf{0.000} & 0.051 & \textbf{0.000} & 0.987 & \textbf{0.000} & 25.0 \\
 \addlinespace[2pt]
-Depth stage & Baseline line + robust depth & 1.00 & \textbf{0.019} & \textbf{0.016} & \textbf{0.047} & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & \textbf{0.993} & \textbf{0.000} & 37.5 \\
+Depth stage & Baseline line + robust depth & 1.00 & \textbf{0.019} & 0.016 & \textbf{0.047} & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & \textbf{0.993} & \textbf{0.000} & 37.5 \\
 \addlinespace[2pt]
 Gate & Baseline + quality gate & 0.96 & 0.053 & 0.030 & 0.212 & \textbf{0.000} & 0.035 & \textbf{0.000} & \textbf{0.993} & \textbf{0.000} & 77.4 \\
 \addlinespace[2pt]
 Two frames & Laser on/off subtraction & 1.00 & 0.026 & 0.020 & 0.066 & \textbf{0.000} & 0.054 & \textbf{0.000} & 0.987 & 0.007 & 22.7 \\
 \addlinespace[2pt]
 No geometry & End-to-end CNN & 1.00 & 0.072 & 0.062 & 0.187 & \textbf{0.000} & 0.003 & \textbf{0.000} & 0.967 & 0.027 & 2.3 \\
+\addlinespace[2pt]
+Combined & DP line + robust depth & 1.00 & 0.024 & 0.019 & 0.061 & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & 0.987 & 0.007 & 39.4 \\
+ & \textbf{Recommended stack} (+ gates) & 1.00 & 0.024 & 0.019 & 0.061 & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & 0.987 & 0.007 & 101.2 \\
+ & On/off line + robust depth & 1.00 & \textbf{0.019} & \textbf{0.014} & 0.051 & \textbf{0.000} & \textbf{0.000} & \textbf{0.000} & \textbf{0.993} & \textbf{0.000} & 30.5 \\
 \bottomrule
 \end{tabular}

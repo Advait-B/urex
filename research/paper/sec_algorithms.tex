@@ -83,7 +83,7 @@ for c in range(1, W):
     C[c, s:s + H] = np.minimum(near, far) - R[c]      # R = reward in 0..1
 \end{lstlisting}
 
-\paragraph{Results.} \algo{dp\_dense} is the best single-frame, training-free line extractor in the study
+\paragraph{Results.} \algo{dp\_dense} gives the best line of the training-free, single-frame extractors
 (Figure~\ref{fig:dp}). On \texttt{stress} the line F1 rises from 0.82 to 0.94, missed grooves fall from 9.9\,\% to
 1.8\,\%, depth MAE from 1.52 to 0.54\,mm and P95 from 6.7 to 0.59\,mm, with no unsafe PASS. On \texttt{handheld}
 it finds 96\,\% of grooves where the baseline finds 53\,\%. The work on this branch also explained two baseline
