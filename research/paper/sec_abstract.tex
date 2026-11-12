@@ -13,7 +13,8 @@ answering 89\,\% of presses; across the three hardest sets it passes none of 41 
 passes 9; on real photos it stops reporting
 depths on frames with no laser (cross-validated: 0 of 55) and agrees with the reference depths to about one pixel.
 An independent audit reproduced every number exactly and found no training on test data. Networks that replace the geometry scored well on data like their training set and failed on other units and on
-real photos. Laser on/off subtraction, which needs a small hardware change, would roughly halve the remaining error in simulation. The
-real photos have no gauge readings, so real-world accuracy is still unmeasured; collecting that ground truth with
-the printed holder is the most valuable next step.
+real photos. Laser on/off subtraction, which the firmware can already capture, would roughly halve the remaining error in simulation. A
+preliminary hand-held test on a tyre of about 9\,mm gave repeatable pixel readings but millimetre estimates 2.4--4.2
+times too large, because the camera--laser geometry was not fixed. Real-world accuracy is therefore still unmeasured;
+calibrated measurements with the printed holder are the most valuable next step.
 \end{abstract}

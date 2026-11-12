@@ -1,0 +1,51 @@
+\section{Preliminary hand-held test against a known depth}\label{sec:prelim}
+
+\caution{\textbf{This section is a preliminary testing stage.} The photos were taken by hand, \emph{without} the
+printed holder, with the laser not fixed to the camera and with no calibration. It is included as a first
+comparison against a real depth, not as a measure of the device's accuracy.}
+
+The truck tyre photographed on 30 October has a tread depth of about 9\,mm (the team's own manual measurement).
+Table~\ref{tab:prelim} compares that with what the recommended pipeline reports on the photos of that tyre it
+accepted, using \texttt{research/session.py}. Without a calibration, pixels are converted to millimetres with the
+\emph{design} geometry: laser at $35^\circ$ and the camera 90\,mm from the tread.
+
+\begin{table}[H]
+\centering\small
+\caption{Preliminary hand-held test, truck tyre, true depth about 9\,mm. ``Range'' is the same pixel reading
+converted at 70 and at 110\,mm stand-off.}\label{tab:prelim}
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+Photo (30 Oct) & Line shift (px) & At 90\,mm (mm) & Range (mm) & Estimate / true \\
+\midrule
+\texttt{154820} & 34.3 & 21.9 & 12.6--34.7 & 2.4$\times$ \\
+\texttt{154854} (same spot) & 36.6 & 23.8 & 13.6--37.8 & 2.6$\times$ \\
+\texttt{154554} & 46.3 & 32.4 & 18.2--52.6 & 3.6$\times$ \\
+\texttt{154510} & 52.1 & 38.1 & 21.1--62.9 & 4.2$\times$ \\
+\midrule
+\texttt{154700}, \texttt{154748}, \texttt{154813} & 75--93 & 67--101 & -- & 7--11$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{What this shows.}
+\begin{itemize}
+\item \textbf{The pixel measurement repeats.} Two presses on the same spot give 34.3 and 36.6\,px, about 6\,\% apart.
+\item \textbf{The millimetre values are 2.4 to 4.2 times too large.} At the design geometry a 9\,mm groove should shift
+      the line by about 16\,px; the photos show 34--52\,px. That is what a camera held only 50--60\,mm from the
+      tread would give, or a laser held at a steeper angle, or both. With a hand-held, unfixed laser the two cannot
+      be told apart, and the scale changes from photo to photo (3.8 to 5.8\,px per mm here).
+\item \textbf{Three readings are not groove floors at all.} Shifts of 75--93\,px are the line tracker following
+      something else, and the gate accepted them. In pixel mode the 25\,mm plausibility cap cannot act, because
+      without a calibration the software does not know what 25\,mm is.
+\end{itemize}
+
+\paragraph{What it means.} This test says nothing against the line finding and nothing for the accuracy: the
+conversion from pixels to millimetres depends on a geometry that was not fixed. It is the practical case for the
+holder. Depth error grows with the square of the stand-off error, so a rigid camera--laser mount at a known height,
+followed by a shim calibration, is required before any millimetre value can be trusted. Until then the software
+should report pixels, and its millimetre column should be read as a rough indication only.
+
+\paragraph{Positioning lessons for the next session.} Fix the laser to the camera; keep a constant stand-off;
+look straight down with the laser line crossing the grooves at a right angle; centre the groove of interest;
+measure on a straight section of groove, away from zig-zag corners and wear-indicator bars; and lower the
+exposure until the laser line is thin rather than a saturated band.

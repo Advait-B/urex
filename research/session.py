@@ -98,7 +98,8 @@ def write_tables(rows, folder):
     if allmm:
         summary.append(f"Groove depth over all measured photos: median {np.median(allmm):.1f} mm, "
                        f"min {min(allmm):.1f} mm, max {max(allmm):.1f} mm (design-geometry estimate)")
-    note = ("approx_mm = design geometry at 90 mm stand-off, NOT calibrated. mm_range = the same reading at 70-110 mm. "
+    note = ("PRELIMINARY TESTING STAGE (hand-held, no holder, no calibration). "
+            "approx_mm = design geometry at 90 mm stand-off, NOT calibrated. mm_range = the same reading at 70-110 mm. "
             "Several values in one cell = several grooves, left to right.")
     text = "\n".join([f"# UREX session {os.path.basename(folder)}", "", *table, "", *summary, "", note, ""])
     with open(os.path.join(folder, "results.md"), "w", encoding="utf-8") as fh:

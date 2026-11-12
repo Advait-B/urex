@@ -84,7 +84,7 @@ position to a height, which also absorbs lens distortion and assembly tolerances
 
 \subsection{Simulator}\label{sec:sim}
 
-Real photos have no ground truth: nobody measured those grooves with a gauge. So we wrote a simulator,
+The real photos have almost no ground truth: only one tyre has a known depth, and none was taken with the holder. So we wrote a simulator,
 \texttt{research/sim/holder\_sim.py}, that renders what the camera in the holder would see. It builds a tyre
 surface (radius 480\,mm, a gentle crown, circumferential grooves with sloped walls and optional rounded floors),
 traces 2{,}400 laser rays to the first surface they hit, checks that the camera can see each hit, and renders the
@@ -121,7 +121,7 @@ Set & Frames & What it represents \\
 \texttt{train} & 1{,}200 & Mixed conditions, different random seed. Training only. \\
 \texttt{calib} & 15 & Flat plate at 15 known heights from $+6$ to $-22$\,mm. \\
 \midrule
-real photos & 86 & Hand-held photos, 8--30 October. A person would measure 19 of them. Six truck-tyre frames have a reference groove depth in pixels. \\
+real photos & 86 & \emph{Preliminary stage.} Hand-held photos, 8--30 October. A person would measure 19 of them. Six truck-tyre frames have a reference groove depth in pixels. \\
 \bottomrule
 \end{tabularx}
 \end{table}

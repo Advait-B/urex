@@ -23,7 +23,7 @@ DP line tracking & strong & agrees ($\approx$1\,px) & \textbf{Adopt} as the line
 Robust depth stage & strong & consistent on the repeat pair & \textbf{Adopt}. Confirm against a gauge. \\
 Quality gate & strong & 0.24 false-accept, cross-validated & \textbf{Adopt}; retrain as labelled sessions grow. \\
 Calibration (physical model) & strong & not testable yet & \textbf{Adopt} the eight-height recipe and zero check. \\
-Laser on/off & best of all & needs hardware & \textbf{Hardware request}: laser on a GPIO. \\
+Laser on/off & best of all & not tested yet & \textbf{Test next}: firmware already captures pairs. \\
 Per-column peaks & accurate, fragile & mixed & Keep as the fast option if the MCU budget is tight. \\
 U-Net line & strong & agrees ($\approx$1\,px) & Park until real holder images exist. \\
 Candidate classifier & strong & fails & Do not use: learned a simulator shortcut. \\
@@ -52,7 +52,7 @@ We list these plainly because they decide how far the numbers above can be trust
 \item \textbf{The simulator shares assumptions with some methods.} Its camera is exactly the physical calibration
       model, and its crown is exactly what the robust depth stage fits. Gains in those two places are upper bounds.
 \item \textbf{The real photos were not taken with the holder.} They are hand-held, the laser was not fixed to the
-      camera, and no groove was measured with a gauge. Their depths are meaningful only in pixels, and the six
+      camera, and only one tyre has a known depth (about 9\,mm, Section~\ref{sec:prelim}). Their depths are meaningful only in pixels, and the six
       reference depths come from the baseline itself. Six frames cannot rank methods that differ by a pixel.
 \item \textbf{Small numbers.} 19 usable photos, 12 with an unusable laser. One photo is 5--8 percentage points.
 \item \textbf{In-sample gate numbers.} The frame gate was trained on the same 86 photos; we quote cross-validated
@@ -76,8 +76,9 @@ We list these plainly because they decide how far the numbers above can be trust
       one-photo zero check at the start of a shift.
 \end{enumerate}
 
-\paragraph{Hardware (one request).} Let the microcontroller switch the laser, and capture an off frame within a
-few milliseconds of the on frame. In simulation this is worth more than any other single change.
+\paragraph{Laser on/off (already possible).} The firmware's pair mode already captures a laser-off and a laser-on
+photo per press. Record pairs in the next session and score on/off subtraction on them; in simulation it is worth
+more than any other single change.
 
 \paragraph{Data (the real gap).} Everything above should be confirmed on images from the printed holder:
 \begin{enumerate}

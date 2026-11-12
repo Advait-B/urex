@@ -307,9 +307,10 @@ regression is the right-sized model; more labelled sessions will help more than 
 \subsection{Laser on/off subtraction}\label{sec:onoff}
 
 \paragraph{Idea.} Take two photos a few milliseconds apart, one with the laser on and one with it off, and
-subtract. Everything that is not laser (sunlight, glints, paint) cancels. The October photos have no laser-off
-partner, so this was tested in simulation only, as a question to the hardware team: is it worth letting the
-microcontroller switch the laser?
+subtract. Everything that is not laser (sunlight, glints, paint) cancels. The firmware can already do this: in
+pair mode it switches the laser through a transistor on pin D2 and sends a laser-off and a laser-on photo for every
+button press. The October photos, however, were single frames with no laser-off partner, so the method was tested
+in simulation only.
 
 \begin{figure}[H]
 \centering
@@ -329,8 +330,8 @@ and dilating the off frame by one pixel keeps the error flat up to 3\,px of moti
 saturating background, rocking, or a dim laser. Averaging several presses helps little, because the remaining
 error is mostly bias; a median of three is cheap insurance.
 
-\takeaway{If the next board revision can switch the laser with a GPIO pin, on/off subtraction is the single biggest
-robustness gain available, and it is twenty lines of code.}
+\takeaway{In simulation, on/off subtraction is the single biggest robustness gain available, and it is twenty lines
+of code. The hardware already captures the pairs; the next step is to test it on real pairs.}
 
 %---------------------------------------------------------------
 \subsection{End-to-end learning}\label{sec:e2e}
